@@ -15,7 +15,8 @@ st.markdown("""
     <style>
     .main-header { font-size: 2.1rem; font-weight: 700; color: #1E3A8A; margin-bottom: 0px; }
     .sub-header { font-size: 0.95rem; color: #6B7280; margin-bottom: 20px; }
-    div[data-baseweb="select"] { cursor: pointer; }
+    /* 체크박스 가독성 및 터치 영역 확대 */
+    .stCheckbox { margin-bottom: -10px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -36,7 +37,7 @@ SECTOR_DATABASE = {
     "📊 주요 대표 ETF": ["SPY", "QQQ", "DIA", "IWM", "TLT", "SCHD"]
 }
 
-# 4. 사이드바 - 클릭 중심 UI
+# 4. 사이드바 - 100% 클릭 전용 UI (키보드 팝업 완벽 방지)
 st.sidebar.markdown("### 🗂️ 1. 시장 섹터 선택")
 selected_sector = st.sidebar.selectbox(
     "분석할 카테고리를 선택하세요",
@@ -44,27 +45,26 @@ selected_sector = st.sidebar.selectbox(
     index=0
 )
 
-# 해당 섹터의 대표 종목 추출
 default_pool = SECTOR_DATABASE[selected_sector]
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("### 📌 2. 분석 종목 클릭 선택 (ON/OFF)")
-st.sidebar.caption("원하는 종목을 클릭하여 포트폴리오에 포함시키세요.")
+st.sidebar.markdown("### 📌 2. 종목 선택 (클릭 ON/OFF)")
+st.sidebar.caption("터치/클릭하여 포트폴리오에 즉시 추가 및 삭제하세요.")
 
-# 클릭형 멀티 선택 (터치 친화적 멀티셀렉트)
-selected_tickers = st.sidebar.multiselect(
-    "클릭하여 종목 선택",
-    options=default_pool,
-    default=default_pool[:4],
-    label_visibility="collapsed"
-)
+# 입력창 대신 100% 클릭형 체크박스 UI로 재설계
+selected_tickers = []
+for ticker in default_pool:
+    # 기본적으로 상위 4개 종목은 체크된 상태로 시작
+    is_default = ticker in default_pool[:4]
+    if st.sidebar.checkbox(f"✅ {ticker}", value=is_default, key=f"chk_{selected_sector}_{ticker}"):
+        selected_tickers.append(ticker)
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 📅 3. 분석 기간 설정")
 start_date = st.sidebar.date_input("시작일", pd.to_datetime("2023-01-01"))
 end_date = st.sidebar.date_input("종료일", pd.to_datetime("today"))
 
-# SPY(S&P 500)는 벤치마크 비교를 위해 기본 자동 포함
+# SPY(S&P 500) 지수는 벤치마크 계산용 자동 포함
 analysis_tickers = list(set(selected_tickers + ["SPY"]))
 
 if selected_tickers:
@@ -161,7 +161,7 @@ if selected_tickers:
                 # 주요 통계 계산
                 tot_return = (port_cum_ret.iloc[-1] - 100)
                 spy_tot_return = (spy_cum_ret.iloc[-1] - 100)
-                alpha = tot_return - spy_tot_return  # 시장 대비 초과 수익률
+                alpha = tot_return - spy_tot_return
                 
                 ann_vol = port_daily_ret.std() * np.sqrt(252) * 100
                 ann_ret = port_daily_ret.mean() * 252 * 100
@@ -304,4 +304,4 @@ The strategy generated an Alpha of {alpha:+.2f}% relative to the S&P 500, showin
     else:
         st.error("선택한 종목의 주가를 불러올 수 없습니다.")
 else:
-    st.warning("👈 사이드바에서 분석할 종목을 선택해 주세요.")
+    st.warning("👈 사이드바에서 분석할 종목을 클릭하여 체크해 주세요.")
