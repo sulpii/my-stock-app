@@ -4,40 +4,69 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 
-# 1. 페이지 레이아웃 및 프로페셔널 테마 설정
+# 1. 페이지 레이아웃 및 하이엔드 금융 단말기 테마 설정
 st.set_page_config(
-    page_title="Wharton Portfolio Analytics Terminal Pro", 
+    page_title="Wharton Institutional Analytics Terminal", 
     page_icon="🏛️", 
     layout="wide"
 )
 
-# Custom CSS for Professional Terminal Styling
+# Custom CSS - Bloomberg/FactSet Style Dark Professional Theme
 st.markdown("""
     <style>
-    .main-header { font-size: 2.1rem; font-weight: 700; color: #0F172A; margin-bottom: 0px; }
-    .sub-header { font-size: 0.95rem; color: #475569; margin-bottom: 20px; }
+    /* Global Styles */
+    .stApp {
+        background-color: #0B0E14;
+        color: #E2E8F0;
+    }
     
+    .main-header { font-size: 2.2rem; font-weight: 800; color: #38BDF8; margin-bottom: 2px; letter-spacing: -0.5px; }
+    .sub-header { font-size: 0.95rem; color: #94A3B8; margin-bottom: 24px; font-weight: 400; }
+    
+    /* KPI Card Styling */
+    .kpi-card {
+        background-color: #1E293B;
+        border: 1px solid #334155;
+        border-radius: 10px;
+        padding: 12px 16px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    }
+    .kpi-title { font-size: 0.8rem; color: #94A3B8; font-weight: 600; text-transform: uppercase; }
+    .kpi-value { font-size: 1.5rem; color: #F8FAFC; font-weight: 700; margin: 4px 0; }
+    .kpi-sub { font-size: 0.85rem; font-weight: 600; }
+    .kpi-pos { color: #10B981; }
+    .kpi-neg { color: #EF4444; }
+    
+    /* Sidebar Fixes */
     .checkbox-container {
-        max-height: 240px;
+        max-height: 250px;
         overflow-y: auto;
-        border: 1px solid #E2E8F0;
-        padding: 10px;
+        border: 1px solid #334155;
+        padding: 12px;
         border-radius: 8px;
-        background-color: #F8FAFC;
+        background-color: #0F172A;
         margin-bottom: 15px;
     }
     
+    /* Section Divider */
+    hr { border-color: #1E293B !important; }
+    
     .stButton>button {
-        width: 100%;
+        background-color: #0EA5E9;
+        color: white;
         border-radius: 6px;
         font-weight: 600;
+        border: none;
+    }
+    .stButton>button:hover {
+        background-color: #0284C7;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# 2. 헤더
-st.markdown('<p class="main-header">🏛️ Wharton Investment Competition Terminal Pro</p>', unsafe_allow_html=True)
-st.markdown('<p class="sub-header">글로벌 11대 GICS 산업 섹터 & 벤치마크(S&P 500) 알파/낙폭 심층 분석 단말기</p>', unsafe_allow_html=True)
+# 2. 헤더 섹션
+st.markdown('<p class="main-header">🏛️ Wharton Investment Competition Analytics Terminal Pro</p>', unsafe_allow_html=True)
+st.markdown('<p class="sub-header">글로벌 GICS 섹터 분석, 알파(Alpha) 검증, 몬테카를로 자산 시뮬레이션 및 와튼 심사보고서 생성기</p>', unsafe_allow_html=True)
 
 # 3. 사전 정의된 완벽 종목 데이터베이스
 SECTOR_DATABASE = {
@@ -52,10 +81,10 @@ SECTOR_DATABASE = {
     "📊 주요 대표 ETF": ["SPY", "QQQ", "DIA", "IWM", "TLT", "SCHD"]
 }
 
-# 4. 사이드바 - unique key 적용으로 중복 ID 에러 방지
-st.sidebar.markdown("### 🗂️ 1. 시장 섹터 선택")
+# 4. 사이드바 - 설정 제어 영역
+st.sidebar.markdown("### 🗂️ 1. GICS 섹터 선택")
 selected_sector = st.sidebar.selectbox(
-    "분석할 카테고리를 선택하세요",
+    "카테고리를 선택하세요",
     options=list(SECTOR_DATABASE.keys()),
     index=0,
     key="unique_sector_select_box"
@@ -64,46 +93,44 @@ selected_sector = st.sidebar.selectbox(
 default_pool = SECTOR_DATABASE[selected_sector]
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("### 📌 2. 종목 선택 (클릭 ON/OFF)")
-st.sidebar.caption("터치/클릭으로 포트폴리오를 구성하세요.")
+st.sidebar.markdown("### 📌 2. 구성 종목 선택 (클릭 ON/OFF)")
+st.sidebar.caption("클릭만으로 포트폴리오를 자유롭게 조절하세요.")
 
-# 스크롤 박스로 감싸진 선택창
 selected_tickers = []
 with st.sidebar.container():
     st.markdown('<div class="checkbox-container">', unsafe_allow_html=True)
     for ticker in default_pool:
         is_default = ticker in default_pool[:4]
-        if st.sidebar.checkbox(f"✅ {ticker}", value=is_default, key=f"chk_v2_{selected_sector}_{ticker}"):
+        if st.sidebar.checkbox(f"✅ {ticker}", value=is_default, key=f"chk_v3_{selected_sector}_{ticker}"):
             selected_tickers.append(ticker)
     st.markdown('</div>', unsafe_allow_html=True)
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("### 📅 3. 백테스트 기간 (Quick Select)")
+st.sidebar.markdown("### 📅 3. 분석 기간 (Quick Select)")
 
-# 퀵 기간 선택 버튼
 today = datetime.today()
 col_q1, col_q2, col_q3, col_q4 = st.sidebar.columns(4)
 
 if 'start_d' not in st.session_state:
     st.session_state.start_d = datetime(2023, 1, 1)
 
-if col_q1.button("YTD", key="btn_ytd"):
+if col_q1.button("YTD", key="btn_ytd_v3"):
     st.session_state.start_d = datetime(today.year, 1, 1)
-if col_q2.button("1년", key="btn_1y"):
+if col_q2.button("1년", key="btn_1y_v3"):
     st.session_state.start_d = today - timedelta(days=365)
-if col_q3.button("3년", key="btn_3y"):
+if col_q3.button("3년", key="btn_3y_v3"):
     st.session_state.start_d = today - timedelta(days=365*3)
-if col_q4.button("5년", key="btn_5y"):
+if col_q4.button("5년", key="btn_5y_v3"):
     st.session_state.start_d = today - timedelta(days=365*5)
 
-start_date = st.sidebar.date_input("시작일", st.session_state.start_d, key="input_start_date")
-end_date = st.sidebar.date_input("종료일", today, key="input_end_date")
+start_date = st.sidebar.date_input("시작일", st.session_state.start_d, key="input_start_d_v3")
+end_date = st.sidebar.date_input("종료일", today, key="input_end_d_v3")
 
-# SPY(S&P 500) 지수 자동 포함
+# SPY 지수 자동 포함
 analysis_tickers = list(set(selected_tickers + ["SPY"]))
 
 if selected_tickers:
-    with st.spinner('금융 데이터 수집 중...'):
+    with st.spinner('금융 시장 데이터를 실시간으로 수집 중...'):
         try:
             raw_data = yf.download(analysis_tickers, start=start_date, end=end_date)
             data = raw_data['Close'] if 'Close' in raw_data else raw_data
@@ -120,8 +147,8 @@ if selected_tickers:
         valid_data = data[valid_tickers].dropna()
         spy_data = data['SPY'].dropna() if 'SPY' in data.columns else None
 
-        # 상단 시세 라이브 카드
-        st.markdown("##### 📌 선택 종목 실시간 시세 현황")
+        # 실시간 KPI 시세 카드 (커스텀 시각화 적용)
+        st.markdown("##### 📌 선택 자산 실시간 데이터 카드")
         metric_cols = st.columns(min(len(valid_tickers), 5))
         for idx, ticker in enumerate(valid_tickers):
             col_target = metric_cols[idx % 5]
@@ -130,23 +157,33 @@ if selected_tickers:
                 curr_p = series.iloc[-1]
                 prev_p = series.iloc[-2]
                 chg = ((curr_p - prev_p) / prev_p) * 100
-                col_target.metric(label=ticker, value=f"${curr_p:.2f}", delta=f"{chg:.2f}%")
+                cls_style = "kpi-pos" if chg >= 0 else "kpi-neg"
+                sign = "+" if chg >= 0 else ""
+                
+                col_target.markdown(f"""
+                <div class="kpi-card">
+                    <div class="kpi-title">{ticker}</div>
+                    <div class="kpi-value">${curr_p:.2f}</div>
+                    <div class="kpi-sub {cls_style}">{sign}{chg:.2f}%</div>
+                </div>
+                """, unsafe_allow_html=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # 5. 메인 분석 탭
-        tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        # 5. 확장된 메인 분석 탭 (총 6개 탭)
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
             "📊 상대 수익률 & SPY 비교", 
             "🎯 포트폴리오 백테스터 & Risk", 
-            "🔍 종목 기술적 분석 (SMA/RSI)", 
+            "🔮 Monte Carlo 자산 시뮬레이션",
+            "🔍 개별 종목 심층 분석 (SMA/RSI)", 
             "🛡️ 리스크 & 상관관계 행렬", 
-            "📄 와튼 대회 제출용 보고서 생성"
+            "📄 와튼 심사용 Executive Summary"
         ])
 
         # TAB 1: 상대 수익률 비교
         with tab1:
-            st.markdown("### 📈 시작 시점(100) 기준 성과 비교")
-            st.caption("시장 지수(SPY) 대비 내가 선택한 주식들의 상대적 상승률 흐름입니다.")
+            st.markdown("### 📈 시작 시점 기준(100 Indexing) Relative Performance")
+            st.caption("기준 가격 100에서 시작하여 벤치마크 지수(S&P 500) 대비 상승률을 추적합니다.")
             
             comparison_df = valid_data.copy()
             if spy_data is not None:
@@ -155,27 +192,27 @@ if selected_tickers:
             norm_data = (comparison_df / comparison_df.iloc[0]) * 100
             st.line_chart(norm_data, use_container_width=True)
 
-        # TAB 2: 포트폴리오 백테스터 & Drawdown
+        # TAB 2: 포트폴리오 백테스터 & Risk
         with tab2:
-            st.markdown("### 🎯 포트폴리오 비중 설정 및 리스크 분석")
+            st.markdown("### 🎯 자산 배분(Asset Allocation) 및 초과수익(Alpha) 산출")
             
-            if st.button("⚖️ 모든 종목 비중 동일하게 맞추기 (1/N Auto-Rebalance)", key="btn_equal_weight"):
+            if st.button("⚖️ 모든 종목 비중 동일하게 맞추기 (1/N Rebalance)", key="btn_equal_w_v3"):
                 equal_w = int(100 / len(valid_tickers))
                 for t in valid_tickers:
-                    st.session_state[f"w_{t}"] = equal_w
+                    st.session_state[f"w_v3_{t}"] = equal_w
 
             weights = []
             slider_cols = st.columns(min(len(valid_tickers), 4))
             for i, ticker in enumerate(valid_tickers):
                 with slider_cols[i % 4]:
-                    default_val = st.session_state.get(f"w_{ticker}", int(100 / len(valid_tickers)))
-                    w = st.slider(f"{ticker} 비중 (%)", 0, 100, default_val, step=5, key=f"w_{ticker}")
+                    default_val = st.session_state.get(f"w_v3_{ticker}", int(100 / len(valid_tickers)))
+                    w = st.slider(f"{ticker} 비중 (%)", 0, 100, default_val, step=5, key=f"w_v3_{ticker}")
                     weights.append(w)
 
             total_weight = sum(weights)
             
             if total_weight == 0:
-                st.warning("⚠️ 최소 1개 이상의 종목 비중을 설정해 주세요.")
+                st.warning("⚠️ 최소 1개 이상의 종목 비중을 1% 이상 설정해 주세요.")
             else:
                 norm_weights = np.array(weights) / total_weight
                 daily_ret = valid_data.pct_change().dropna()
@@ -186,13 +223,14 @@ if selected_tickers:
                 spy_cum_ret = (1 + spy_daily_ret).cumprod() * 100
 
                 chart_df = pd.DataFrame({
-                    "내 포트폴리오": port_cum_ret,
+                    "포트폴리오 (Portfolio)": port_cum_ret,
                     "벤치마크 (S&P 500)": spy_cum_ret
                 }).dropna()
 
-                st.markdown("#### 🚀 포트폴리오 VS S&P 500 누적 성과 추이")
-                st.line_chart(chart_df, color=["#1E3A8A", "#9CA3AF"], use_container_width=True)
+                st.markdown("#### 🚀 Cumulative Return vs Benchmark")
+                st.line_chart(chart_df, color=["#38BDF8", "#94A3B8"], use_container_width=True)
 
+                # MDD 계산 및 차트
                 cum_roll_max = port_cum_ret.cummax()
                 drawdown = (port_cum_ret - cum_roll_max) / cum_roll_max * 100
                 
@@ -204,9 +242,8 @@ if selected_tickers:
                     "S&P 500 낙폭 (%)": spy_drawdown
                 }).dropna()
 
-                st.markdown("#### 📉 고점 대비 낙폭 추이 (Drawdown Risk)")
-                st.caption("그래프가 0% 아래로 크게 내려갈수록 변동성 위험이 큰 구간입니다.")
-                st.area_chart(dd_df, color=["#EF4444", "#CBD5E1"], use_container_width=True)
+                st.markdown("#### 📉 Drawdown Profile (고점 대비 하락 폭)")
+                st.area_chart(dd_df, color=["#EF4444", "#475569"], use_container_width=True)
 
                 tot_return = (port_cum_ret.iloc[-1] - 100)
                 spy_tot_return = (spy_cum_ret.iloc[-1] - 100)
@@ -218,7 +255,7 @@ if selected_tickers:
                 sharpe = (ann_ret - rf) / ann_vol if ann_vol != 0 else 0
                 mdd = drawdown.min()
 
-                st.markdown("#### 📊 핵심 성과 및 알파(Alpha) 지표")
+                st.markdown("#### 📊 기관급 성과/위험 핵심 지표 (Key Institutional Metrics)")
                 m1, m2, m3, m4, m5 = st.columns(5)
                 m1.metric("총 수익률", f"{tot_return:.2f}%")
                 m2.metric("초과 수익 (Alpha)", f"{alpha:+.2f}%", delta=f"{alpha:.2f}%p")
@@ -226,10 +263,47 @@ if selected_tickers:
                 m4.metric("샤프 지수 (Sharpe)", f"{sharpe:.2f}")
                 m5.metric("최대 낙폭 (MDD)", f"{mdd:.2f}%")
 
-        # TAB 3: 기술적 분석
+        # TAB 3: Monte Carlo 자산 시뮬레이션 (신규 고급 기능)
         with tab3:
-            st.markdown("### 🔍 개별 종목 기술적 지표 분석")
-            selected_ticker = st.selectbox("분석할 종목을 선택하세요", valid_tickers, key="sb_tech_ticker")
+            st.markdown("### 🔮 몬테카를로(Monte Carlo) 향후 1년 자산 시뮬레이션")
+            st.caption("과거 변동성과 수익률 패턴을 토대로 1,000가지 시나리오의 미래 자산 가치 범위를 정밀 예측합니다.")
+            
+            if 'port_daily_ret' in locals() and len(port_daily_ret) > 0:
+                mc_sims = 1000
+                T = 252 # 1년 거래일
+                initial_portfolio = 10000 # 기준 자산 $10,000
+
+                mean_daily = port_daily_ret.mean()
+                stdev_daily = port_daily_ret.std()
+
+                # Monte Carlo Engine
+                sim_results = np.zeros((T, mc_sims))
+                sim_results[0] = initial_portfolio
+
+                np.random.seed(42) # 결과 일관성 유지
+                for t in range(1, T):
+                    rand_shocks = np.random.normal(mean_daily, stdev_daily, mc_sims)
+                    sim_results[t] = sim_results[t-1] * (1 + rand_shocks)
+
+                mc_df = pd.DataFrame(sim_results)
+                
+                st.markdown("#### 📊 1,000개 자산 시나리오 경로 추이 ($10,000 시작 기준)")
+                st.line_chart(mc_df.iloc[:, :50], use_container_width=True) # 50개 샘플 시각화
+
+                p5 = np.percentile(sim_results[-1], 5)
+                p50 = np.percentile(sim_results[-1], 50)
+                p95 = np.percentile(sim_results[-1], 95)
+
+                st.markdown("#### 🎯 1년 후 예상 자산 평가액 구간")
+                c_mc1, c_mc2, c_mc3 = st.columns(3)
+                c_mc1.metric("하단 5% (최악 시나리오)", f"${p5:,.0f}", delta=f"{((p5-10000)/10000)*100:.1f}%")
+                c_mc2.metric("중위 50% (기대 자산가치)", f"${p50:,.0f}", delta=f"{((p50-10000)/10000)*100:.1f}%")
+                c_mc3.metric("상단 95% (최선 시나리오)", f"${p95:,.0f}", delta=f"{((p95-10000)/10000)*100:.1f}%")
+
+        # TAB 4: 기술적 분석
+        with tab4:
+            st.markdown("### 🔍 개별 종목 기술적 지표 (Technical Indicators)")
+            selected_ticker = st.selectbox("분석할 종목을 선택하세요", valid_tickers, key="sb_tech_ticker_v3")
             
             stock_series = valid_data[selected_ticker]
             sma_50 = stock_series.rolling(window=50).mean()
@@ -237,11 +311,11 @@ if selected_tickers:
             
             chart_df = pd.DataFrame({
                 selected_ticker: stock_series,
-                "50일 이동평균": sma_50,
-                "200일 이동평균": sma_200
+                "50일 이동평균 (SMA 50)": sma_50,
+                "200일 이동평균 (SMA 200)": sma_200
             })
             
-            st.markdown(f"#### 📉 {selected_ticker} 가격 & 이동평균선")
+            st.markdown(f"#### 📉 {selected_ticker} 이동평균 추세")
             st.line_chart(chart_df, use_container_width=True)
 
             delta = stock_series.diff()
@@ -251,21 +325,21 @@ if selected_tickers:
             rsi = 100 - (100 / (1 + rs))
             latest_rsi = rsi.dropna().iloc[-1] if not rsi.dropna().empty else 50
             
-            st.markdown(f"#### 📊 {selected_ticker} RSI (14일): **{latest_rsi:.1f}**")
+            st.markdown(f"#### 📊 {selected_ticker} 상대강도지수 (RSI 14일): **{latest_rsi:.1f}**")
             if latest_rsi >= 70:
-                st.warning("⚠️ 과매수 상태 (RSI ≥ 70)")
+                st.warning("⚠️ 과매수 구간 (RSI ≥ 70) - 단기 조정 가능성 고려")
             elif latest_rsi <= 30:
-                st.success("💡 과매도 상태 (RSI ≤ 30)")
+                st.success("💡 과매도 구간 (RSI ≤ 30) - 기술적 반등 가능성 고려")
             else:
-                st.info("ℹ️ 중립 상태 (30 < RSI < 70)")
+                st.info("ℹ️ 중립 구간 (30 < RSI < 70)")
 
-        # TAB 4: 리스크 & 상관관계 분석
-        with tab4:
-            st.markdown("### 🛡️ 자산 간 상관관계 및 리스크 표")
+        # TAB 5: 리스크 & 상관관계 분석
+        with tab5:
+            st.markdown("### 🛡️ 상관관계 행렬 (Correlation Matrix) & Risk Table")
             daily_returns = valid_data.pct_change().dropna()
             corr_matrix = daily_returns.corr()
             
-            st.markdown("#### 🔗 자산 상관관계 행렬 (Correlation Matrix)")
+            st.markdown("#### 🔗 포트폴리오 자산 간 상관계수 (낮을수록 분산효과 극대화)")
             st.dataframe(corr_matrix.style.format("{:.2f}"), use_container_width=True)
 
             ind_ann_ret = daily_returns.mean() * 252 * 100
@@ -280,23 +354,46 @@ if selected_tickers:
                 ind_mdd[t] = ((t_cum - t_max) / t_max).min() * 100
 
             summary_df = pd.DataFrame({
-                "수익률 (%)": ind_ann_ret.map("{:.2f}%".format),
-                "변동성 (%)": ind_ann_vol.map("{:.2f}%".format),
-                "샤프 지수": ind_sharpe.map("{:.2f}".format),
-                "최대 낙폭 (%)": pd.Series(ind_mdd).map("{:.2f}%".format)
+                "연간 수익률 (%)": ind_ann_ret.map("{:.2f}%".format),
+                "연간 변동성 (%)": ind_ann_vol.map("{:.2f}%".format),
+                "샤프 지수 (Sharpe)": ind_sharpe.map("{:.2f}".format),
+                "최대 낙폭 (MDD %)": pd.Series(ind_mdd).map("{:.2f}%".format)
             })
 
             st.dataframe(summary_df.T, use_container_width=True)
 
-        # TAB 5: 와튼 대회 보고서 자동 생성
-        with tab5:
-            st.markdown("### 📄 Wharton Investment Executive Summary Generator")
+        # TAB 6: 와튼 보고서 자동 생성
+        with tab6:
+            st.markdown("### 📄 Wharton Investment Competition Executive Summary Generator")
             
             if 'total_weight' in locals() and total_weight > 0:
-                lang = st.radio("언어 선택", ["한국어", "English"], key="radio_lang")
+                lang = st.radio("보고서 언어 선택", ["English (권장)", "한국어"], key="radio_lang_v3")
                 weight_summary = ", ".join([f"{t}: {w}%" for t, w in zip(valid_tickers, weights) if w > 0])
                 
-                if lang == "한국어":
+                if lang == "English (권장)":
+                    report_text = f"""
+### 📄 Executive Summary: Wharton Investment Competition Portfolio
+
+**1. Strategy & Asset Allocation**
+- **Target Sector:** {selected_sector}
+- **Portfolio Construction:** {weight_summary}
+
+**2. Quantitative Risk & Return Performance**
+- **Total Cumulative Return:** {tot_return:.2f}%
+- **Alpha (vs. S&P 500 Benchmark):** {alpha:+.2f}%
+- **Annualized Volatility:** {ann_vol:.2f}%
+- **Sharpe Ratio (Rf=4%):** {sharpe:.2f}
+- **Maximum Drawdown (MDD):** {mdd:.2f}%
+
+**3. Monte Carlo Forward Simulation (1-Year Horizon)**
+- **5th Percentile (Downside Risk):** ${p5:,.0f} ({((p5-10000)/10000)*100:.1f}%)
+- **50th Percentile (Expected Value):** ${p50:,.0f} ({((p50-10000)/10000)*100:.1f}%)
+- **95th Percentile (Upside Potential):** ${p95:,.0f} ({((p95-10000)/10000)*100:.1f}%)
+
+**4. Investment Thesis**
+Our strategic asset allocation achieved an Alpha of {alpha:+.2f}% over the S&P 500 benchmark. By maintaining a Sharpe ratio of {sharpe:.2f} and an MDD of {mdd:.2f}%, the portfolio demonstrates superior risk-adjusted return efficiency suitable for Wharton Competition standards.
+                    """
+                else:
                     report_text = f"""
 ### 📄 와튼 투자 대회 포트폴리오 요약 보고서
 
@@ -304,37 +401,24 @@ if selected_tickers:
 - **선택 카테고리:** {selected_sector}
 - **자산 비중:** {weight_summary}
 
-**2. 성과 및 리스크 측정 (Performance & Risk)**
+**2. 정량적 성과 및 위험 측정 (Performance)**
 - **포트폴리오 총 수익률:** {tot_return:.2f}%
 - **시장 초과 수익률 (Alpha vs SPY):** {alpha:+.2f}%
 - **연간 변동성 (Volatility):** {ann_vol:.2f}%
 - **샤프 지수 (Sharpe Ratio):** {sharpe:.2f}
 - **최대 낙폭 (MDD):** {mdd:.2f}%
 
-**3. 투자 결론 (Thesis)**
-본 포트폴리오는 S&P 500 지수 대비 {alpha:+.2f}%의 Alpha를 달성하며 시장 대비 뛰어난 성과를 기록했습니다. 샤프 지수 {sharpe:.2f}와 MDD {mdd:.2f}%를 통해 리스크 관리 우수성을 입증합니다.
-                    """
-                else:
-                    report_text = f"""
-### 📄 Wharton Investment Strategy Executive Summary
+**3. 몬테카를로 미래 시뮬레이션 (1년 미래 자산가치)**
+- **하단 5% (최악 시나리오):** ${p5:,.0f} ({((p5-10000)/10000)*100:.1f}%)
+- **중위 50% (기대 자산가치):** ${p50:,.0f} ({((p50-10000)/10000)*100:.1f}%)
+- **상단 95% (최선 시나리오):** ${p95:,.0f} ({((p95-10000)/10000)*100:.1f}%)
 
-**1. Portfolio Construction**
-- **Sector Focus:** {selected_sector}
-- **Asset Allocation:** {weight_summary}
-
-**2. Benchmark & Risk Performance**
-- **Total Return:** {tot_return:.2f}%
-- **Alpha (vs. S&P 500):** {alpha:+.2f}%
-- **Annualized Volatility:** {ann_vol:.2f}%
-- **Sharpe Ratio:** {sharpe:.2f}
-- **Maximum Drawdown (MDD):** {mdd:.2f}%
-
-**3. Key Takeaway**
-The strategy generated an Alpha of {alpha:+.2f}% relative to the S&P 500, showing strong outperformance with robust downside risk control (MDD {mdd:.2f}%).
+**4. 종합 투자 제안 (Investment Thesis)**
+본 포트폴리오는 S&P 500 벤치마크 대비 {alpha:+.2f}%의 Alpha를 기록했습니다. 샤프 지수 {sharpe:.2f} 및 MDD {mdd:.2f}%를 통해 최적화된 위험 대비 수익 효율성을 입증합니다.
                     """
                 
                 st.markdown(report_text)
-                st.text_area("보고서 텍스트 복사", report_text, height=220, key="ta_report")
+                st.text_area("보고서 텍스트 복사", report_text, height=260, key="ta_report_v3")
             else:
                 st.warning("탭 2에서 종목 비중을 먼저 설정해 주세요.")
 
@@ -346,7 +430,7 @@ The strategy generated an Alpha of {alpha:+.2f}% relative to the S&P 500, showin
             data=csv_data, 
             file_name="wharton_terminal_data.csv", 
             mime="text/csv",
-            key="btn_csv_download"
+            key="btn_csv_download_v3"
         )
     else:
         st.error("선택한 종목의 주가를 불러올 수 없습니다.")
