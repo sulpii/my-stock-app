@@ -3,6 +3,7 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+import plotly.express as px
 from datetime import datetime, timedelta
 
 # 1. Page Configuration
@@ -22,10 +23,6 @@ st.markdown("""
         background-color: #1E293B; color: #38BDF8; padding: 4px 10px;
         border-radius: 6px; font-size: 0.85rem; font-weight: 700; border: 1px solid #334155;
     }
-    .pro-badge {
-        background: linear-gradient(135deg, #F59E0B, #D97706); color: white;
-        padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; margin-left: 8px;
-    }
     .kpi-card {
         background-color: #1E293B; border: 1px solid #334155; border-radius: 10px; padding: 12px 16px;
     }
@@ -42,13 +39,13 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 🌐 완벽 검증 다국어 사전 (Strict Translation Dictionary)
+# 🌐 완벽 다국어 사전
 LANG_DICT = {
     "한국어": {
         "title": "🧪 스톡랩 (StockLab)",
         "subtitle": "3초 만에 검증하는 미국 주식 포트폴리오 시뮬레이터",
         "ver_select": "📌 버전 / 모드 선택",
-        "settings": "⚙️ 언어 설정",
+        "settings": "⚙️ 언어 설정 (Language)",
         "sector_title": "🗂️ 섹터 선택",
         "ticker_title": "📌 종목 선택",
         "curr_price": "📌 실시간 종목 시세",
@@ -66,15 +63,22 @@ LANG_DICT = {
         "mc_p50": "중립적 시나리오 (평균 50%)",
         "mc_p95": "낙관적 시나리오 (상위 5%)",
         "pro_lock": "👑 Pro 전용 기능입니다. 버전 선택에서 Pro 모드로 전환하세요.",
-        "tut_title": "📖 StockLab 3초 사용 가이드",
-        "tut_body": "1️⃣ <b>종목 선택</b>: 왼쪽 섹터에서 원하는 종목을 체크하세요.<br>2️⃣ <b>비중 설정</b>: <code>🎯 포트폴리오 계산기</code>에서 종목별 비중(%)을 입력하고 <b>[🚀 분석 실행]</b>을 누르세요.<br>3️⃣ <b>결과 확인</b>: S&P 500 대비 수익률 및 1년 후 예상 자산을 확인해보세요.",
-        "contact": "🤝 서비스 문의"
+        "tut_title": "📖 StockLab 사용 가이드",
+        "tut_body": "1️⃣ <b>종목 선택</b>: 좌측에서 섹터를 선택하고 원하는 종목을 체크하세요.<br>2️⃣ <b>비중 설정</b>: <code>🎯 포트폴리오 계산기</code>에서 비중(%)을 입력하고 <b>[🚀 분석 실행]</b>을 누르세요.<br>3️⃣ <b>결과 확인</b>: 수익률, 1년 후 자산 시뮬레이션, 리스크 분석 결과를 확인하세요.",
+        "contact": "🤝 서비스 문의",
+        "sectors": {
+            "IT / 반도체": "💻 IT / 반도체",
+            "빅테크 / 미디어": "🌐 빅테크 / 미디어",
+            "커머스 / 전기차": "🚗 커머스 / 전기차",
+            "금융 / 헬스케어": "🏥 금융 / 헬스케어",
+            "대표 ETF": "📈 대표 ETF"
+        }
     },
     "English": {
         "title": "🧪 StockLab",
         "subtitle": "US Stock Portfolio Simulator in 3 Seconds",
-        "ver_select": "📌 Version / Mode Select",
-        "settings": "⚙️ Language Settings",
+        "ver_select": "📌 Mode Select",
+        "settings": "⚙️ Language",
         "sector_title": "🗂️ Select Sector",
         "ticker_title": "📌 Select Assets",
         "curr_price": "📌 Real-Time Market Prices",
@@ -91,16 +95,23 @@ LANG_DICT = {
         "mc_p5": "Conservative (Worst 5%)",
         "mc_p50": "Moderate (Average 50%)",
         "mc_p95": "Optimistic (Best 5%)",
-        "pro_lock": "👑 Pro feature only. Please switch to Pro mode in the Version menu.",
+        "pro_lock": "👑 Pro feature only. Switch to Pro mode in the Version menu.",
         "tut_title": "📖 Quick Start Guide",
-        "tut_body": "1️⃣ <b>Select Assets</b>: Check desired tickers in the left sidebar.<br>2️⃣ <b>Set Weight</b>: Enter weights (%) in <code>🎯 Portfolio Calculator</code> and click <b>[🚀 Run Analytics]</b>.<br>3️⃣ <b>View Results</b>: Compare returns against S&P 500 and run 1-year asset projections.",
-        "contact": "🤝 Contact Us"
+        "tut_body": "1️⃣ <b>Select Assets</b>: Choose sector & check tickers on the left.<br>2️⃣ <b>Set Weight</b>: Enter weights in <code>🎯 Portfolio Calculator</code> and click <b>[🚀 Run Analytics]</b>.<br>3️⃣ <b>View Results</b>: Analyze return comparison, 1-year asset projection & risk metrics.",
+        "contact": "🤝 Contact Us",
+        "sectors": {
+            "IT / 반도체": "💻 IT & Semiconductor",
+            "빅테크 / 미디어": "🌐 Big Tech & Media",
+            "커머스 / 전기차": "🚗 Commerce & EV",
+            "금융 / 헬스케어": "🏥 Finance & Healthcare",
+            "대표 ETF": "📈 Major ETFs"
+        }
     },
     "日本語": {
         "title": "🧪 ストックラボ (StockLab)",
         "subtitle": "3秒で検証する米国株ポートフォリオシミュレーター",
-        "ver_select": "📌 バージョン / モード選択",
-        "settings": "⚙️ 言語設定",
+        "ver_select": "📌 モード選択",
+        "settings": "⚙️ 言語設定 (Language)",
         "sector_title": "🗂️ セクター選択",
         "ticker_title": "📌 銘柄選択",
         "curr_price": "📌 リアルタイム株価",
@@ -119,18 +130,25 @@ LANG_DICT = {
         "mc_p95": "楽観的シナリオ (上位5%)",
         "pro_lock": "👑 Pro専用機能です。バージョン選択でProモードに切り替えてください。",
         "tut_title": "📖 Quick ガイド",
-        "tut_body": "1️⃣ <b>銘柄選択</b>: 左のサイドバーで希望の銘柄をチェックします。<br>2️⃣ <b>比率設定</b>: <code>🎯 ポートフォリオ計算機</code>で投資比率(%)を入力し<b>[🚀 分析実行]</b>をクリックします。<br>3️⃣ <b>結果確認</b>: S&P 500との比較や1年後の予想資産を確認できます。",
-        "contact": "🤝 お問い合わせ"
+        "tut_body": "1️⃣ <b>銘柄選択</b>: 左でセクターを選び銘柄をチェックします。<br>2️⃣ <b>比率設定</b>: <code>🎯 ポートフォリオ計算機</code>で投資比率(%)を入力し<b>[🚀 分析実行]</b>をクリックします。<br>3️⃣ <b>結果確認</b>: 収益率、1年後の予測資産、リスク分析を確認できます。",
+        "contact": "🤝 お問い合わせ",
+        "sectors": {
+            "IT / 반도체": "💻 IT・半導体",
+            "빅테크 / 미디어": "🌐 ビッグテック・メディア",
+            "커머스 / 전기차": "🚗 コマース・電気自動車",
+            "금융 / 헬스케어": "🏥 金融・ヘルスケア",
+            "대표 ETF": "📈 主要ETF"
+        }
     }
 }
 
 TICKER_NAMES = {
     "NVDA": "엔비디아 (NVDA)", "AAPL": "애플 (AAPL)", "MSFT": "마이크로소프트 (MSFT)", 
-    "AVGO": "브로드컴 (AVGO)", "AMD": "AMD (AMD)", "TSM": "TSMC (TSM)",
-    "GOOGL": "알파벳 (GOOGL)", "META": "메타 (META)", "NFLX": "넷플릭스 (NFLX)",
+    "AVGO": "브로드컴 (AVGO)", "AMD": "AMD (AMD)", "TSM": "TSMC (TSM)", "QCOM": "퀄컴 (QCOM)",
+    "GOOGL": "알파벳/구글 (GOOGL)", "META": "메타 (META)", "NFLX": "넷플릭스 (NFLX)", "DIS": "디즈니 (DIS)",
     "AMZN": "아마존 (AMZN)", "TSLA": "테슬라 (TSLA)", "NKE": "나이키 (NKE)", "SBUX": "스타벅스 (SBUX)",
-    "KO": "코카콜라 (KO)", "PEP": "펩시코 (PEP)", "WMT": "월마트 (WMT)",
-    "BRK-B": "버크셔 해서웨이 (BRK-B)", "JPM": "JP모건 (JPM)", "SPY": "S&P 500 (SPY)", "QQQ": "나스닥 100 (QQQ)"
+    "JPM": "JP모건 (JPM)", "BAC": "뱅크오브아메리카 (BAC)", "LLY": "일라이릴리 (LLY)", "UNH": "유나이티드헬스 (UNH)",
+    "SPY": "S&P 500 ETF (SPY)", "QQQ": "나스닥 100 ETF (QQQ)", "SOXX": "반도체 ETF (SOXX)", "SCHD": "배당 ETF (SCHD)"
 }
 
 def get_disp_name(ticker):
@@ -148,16 +166,17 @@ def fetch_stock_data(tickers, start, end):
         return pd.DataFrame()
 
 # Sidebar: Language & Version Mode Selection
-st.sidebar.markdown("### ⚙️ 언어 (Language)")
+st.sidebar.markdown("### ⚙️ Language / 언어")
 selected_lang = st.sidebar.selectbox("Language", ["한국어", "English", "日本語"], index=0, label_visibility="collapsed")
 L = LANG_DICT[selected_lang]
 
 st.sidebar.markdown("---")
 st.sidebar.markdown(f"### {L['ver_select']}")
 mode_choice = st.sidebar.selectbox(
-    "모드 선택", 
-    ["v1.0 (일반 무료)", "v1.0 Pro (개발자/프리미엄)"], 
-    index=1
+    "Mode", 
+    ["v1.0 Free", "v1.0 Pro"], 
+    index=1,
+    label_visibility="collapsed"
 )
 is_pro = "Pro" in mode_choice
 
@@ -170,7 +189,7 @@ with col_h2:
     tag_name = "v1.0 Pro" if is_pro else "v1.0 Free"
     st.markdown(f'<div style="text-align:right; margin-top:10px;"><span class="version-tag">{tag_name}</span></div>', unsafe_allow_html=True)
 
-# Guide Tutorial Expander
+# Guide Tutorial
 with st.expander(f"📖 **{L['tut_title']}**", expanded=False):
     st.markdown(f"""
     <div class="tutorial-box">
@@ -178,24 +197,36 @@ with st.expander(f"📖 **{L['tut_title']}**", expanded=False):
     </div>
     """, unsafe_allow_html=True)
 
-# Sector Database
+# Extended Sector Database
 SECTOR_DATABASE = {
-    "IT / 반도체": ["NVDA", "AAPL", "MSFT", "AVGO", "AMD", "TSM"],
-    "빅테크 / 미디어": ["GOOGL", "META", "NFLX"],
-    "커머스 / 모빌리티": ["AMZN", "TSLA", "NKE", "SBUX"],
-    "소비재 / 대표 ETF": ["KO", "PEP", "WMT", "SPY", "QQQ"]
+    "IT / 반도체": ["NVDA", "AAPL", "MSFT", "AVGO", "AMD", "TSM", "QCOM"],
+    "빅테크 / 미디어": ["GOOGL", "META", "NFLX", "DIS"],
+    "커머스 / 전기차": ["AMZN", "TSLA", "NKE", "SBUX"],
+    "금융 / 헬스케어": ["JPM", "BAC", "LLY", "UNH"],
+    "대표 ETF": ["SPY", "QQQ", "SOXX", "SCHD"]
 }
 
 st.sidebar.markdown(f"### {L['sector_title']}")
-selected_sector = st.sidebar.radio("Sector", list(SECTOR_DATABASE.keys()), index=0, label_visibility="collapsed")
-default_pool = SECTOR_DATABASE[selected_sector]
+raw_sector_keys = list(SECTOR_DATABASE.keys())
+translated_sector_labels = [L["sectors"][k] for k in raw_sector_keys]
+
+selected_sector_idx = st.sidebar.radio(
+    "Sector", 
+    range(len(raw_sector_keys)), 
+    format_func=lambda i: translated_sector_labels[i],
+    index=0, 
+    label_visibility="collapsed"
+)
+
+selected_sector_key = raw_sector_keys[selected_sector_idx]
+default_pool = SECTOR_DATABASE[selected_sector_key]
 
 st.sidebar.markdown("---")
 st.sidebar.markdown(f"### {L['ticker_title']}")
 selected_tickers = []
 for ticker in default_pool:
     disp = get_disp_name(ticker)
-    if st.sidebar.checkbox(f"{disp}", value=(ticker in default_pool[:3]), key=f"chk_v17_{ticker}"):
+    if st.sidebar.checkbox(f"{disp}", value=(ticker in default_pool[:3]), key=f"chk_v18_{ticker}"):
         selected_tickers.append(ticker)
 
 today = datetime.today()
@@ -265,7 +296,7 @@ if selected_tickers:
 
         # TAB 2: Portfolio Calculator
         with tab2:
-            with st.form("portfolio_form_v17"):
+            with st.form("portfolio_form_v18"):
                 weights = []
                 slider_cols = st.columns(min(len(valid_tickers), 4))
                 for i, ticker in enumerate(valid_tickers):
@@ -303,7 +334,7 @@ if selected_tickers:
                     'port_daily_ret': port_daily_ret
                 }
 
-        # TAB 3: Simulation (Pro Only)
+        # TAB 3: Asset Simulation (Pro)
         with tab3:
             if not is_pro:
                 st.warning(L["pro_lock"])
@@ -357,14 +388,22 @@ if selected_tickers:
             update_chart_layout(fig_detail)
             st.plotly_chart(fig_detail, use_container_width=True, config={'scrollZoom': True})
 
-        # TAB 5: Risk Correlation Matrix
+        # TAB 5: Risk Correlation (Plotly Heatmap으로 에러 완벽 해결)
         with tab5:
-            st.markdown("### 🛡️ 종목 간 상관관계 Matrix")
+            st.markdown("### 🛡️ 종목 간 상관관계 (Correlation Matrix)")
             daily_returns = valid_data.pct_change().dropna()
             corr_df = daily_returns.corr()
-            st.dataframe(corr_df.style.format("{:.2f}").background_gradient(cmap="Blues"), use_container_width=True)
 
-        # TAB 6: Shareable Card (Pro Only)
+            fig_corr = px.imshow(
+                corr_df,
+                text_auto=".2f",
+                color_continuous_scale="Blues",
+                aspect="auto"
+            )
+            update_chart_layout(fig_corr)
+            st.plotly_chart(fig_corr, use_container_width=True)
+
+        # TAB 6: Shareable Card (Pro)
         with tab6:
             if not is_pro:
                 st.warning(L["pro_lock"])
