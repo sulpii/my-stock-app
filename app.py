@@ -15,31 +15,42 @@ st.title("📈 Wharton Investment Competition & Stock Analysis Dashboard")
 st.caption("Wharton Global High School Investment Competition - Comprehensive Portfolio Strategy Tool")
 st.markdown("---")
 
-# 3. 사이드바 프리셋 종목 설정 (카테고리별 구성)
-st.sidebar.header("⚙️ 분석 종목 및 기간 선택")
-
-TICKER_DICTIONARY = {
-    "🇺🇸 미국 대표 빅테크": ["AAPL", "NVDA", "MSFT", "GOOGL", "AMZN", "META", "TSLA"],
-    "📊 주요 지수 및 채권 ETF": ["SPY", "QQQ", "TLT", "IEF", "AGG"],
-    "🪙 원자재 및 원자재 ETF": ["GLD", "SLV", "USO"],
-    "🚀 주요 배당 및 글로벌 ETF": ["SCHD", "VT", "EEM"]
+# 3. 사이드바 - 카테고리/섹터별 세분화 데이터베이스
+TICKER_CATEGORIES = {
+    "🇺🇸 테크 & 빅테크": ["AAPL", "NVDA", "MSFT", "GOOGL", "AMZN", "META", "TSLA", "AMD", "TSM"],
+    "📊 지수 및 대표 ETF": ["SPY", "QQQ", "DIA", "IWM", "SOXX"],
+    "🏦 금융 & 소비재": ["JPM", "BAC", "V", "WMT", "COST", "NKE", "SBUX", "DIS", "NFLX"],
+    "🛡️ 안전자산 & 배당": ["TLT", "IEF", "AGG", "GLD", "SLV", "SCHD"],
+    "🌐 전체 목록에서 조합": ["AAPL", "NVDA", "TSLA", "SPY", "TLT", "GLD", "MSFT", "GOOGL", "AMZN", "QQQ", "SCHD"]
 }
 
-# 기본 선택 종목 지정
-default_selection = ["AAPL", "NVDA", "TSLA", "SPY", "TLT", "GLD"]
+st.sidebar.header("🗂️ 자산 카테고리 선택")
 
-# 사이드바 다중 선택 기능 (Multiselect)
-all_tickers_flat = [ticker for group in TICKER_DICTIONARY.values() for ticker in group]
-selected_tickers = st.sidebar.multiselect(
-    "분석할 종목을 선택하거나 검색하세요 (직접 입력 가능)",
-    options=sorted(list(set(all_tickers_flat))),
-    default=default_selection
+# 채팅방 선택처럼 카테고리 선택 메뉴 제공
+selected_category = st.sidebar.radio(
+    "분석할 시장 테마를 선택하세요",
+    options=list(TICKER_CATEGORIES.keys())
 )
 
+st.sidebar.markdown("---")
+st.sidebar.subheader("📌 종목 선택 (클릭으로 켜기/끄기)")
+
+# 해당 카테고리의 종목 목록을 사이드바에 쭉 표시
+available_tickers = TICKER_CATEGORIES[selected_category]
+selected_tickers = []
+
+# 각 종목별 체크박스 생성
+for ticker in available_tickers:
+    # 기본으로 몇 개 종목은 선택 상태로 지정
+    is_default = ticker in ["AAPL", "NVDA", "TSLA", "SPY", "TLT", "GLD"]
+    if st.sidebar.checkbox(ticker, value=is_default, key=f"chk_{ticker}"):
+        selected_tickers.append(ticker)
+
+st.sidebar.markdown("---")
 start_date = st.sidebar.date_input("시작일", pd.to_datetime("2023-01-01"))
 end_date = st.sidebar.date_input("종료일", pd.to_datetime("today"))
 
-ticker_list = [t.strip().upper() for t in selected_tickers if t.strip()]
+ticker_list = list(set(selected_tickers))
 
 if ticker_list:
     with st.spinner('금융 데이터 및 주가를 불러오는 중입니다...'):
@@ -89,7 +100,7 @@ if ticker_list:
         # TAB 1: 상대 수익률 비교
         with tab1:
             st.markdown("### 📈 시작 시점(100 기준) 상대 수익률 비교")
-            st.caption("선택한 종목들의 시작가를 100으로 설정하여 어떤 자산이 더 높은 수익을 올렸는지 직관적으로 비교합니다.")
+            st.caption("왼쪽 사이드바에서 선택한 종목들의 시작가를 100으로 설정하여 성과를 비교합니다.")
             norm_data = (valid_data / valid_data.iloc[0]) * 100
             st.line_chart(norm_data, use_container_width=True)
 
@@ -265,6 +276,6 @@ This strategy strikes a balance between capital growth and risk mitigation. By c
             mime="text/csv"
         )
     else:
-        st.error("입력하신 종목의 데이터를 찾을 수 없습니다. 올바른 주식 티커를 입력해 주세요.")
+        st.error("선택한 종목 중 불러올 수 있는 주가 데이터가 없습니다. 종목을 하나 이상 선택해 주세요.")
 else:
-    st.warning("분석할 주식 코드를 입력해 주세요.")
+    st.warning("왼쪽 사이드바에서 분석할 종목 체크박스를 하나 이상 선택해 주세요.")
