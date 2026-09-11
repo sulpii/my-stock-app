@@ -32,8 +32,8 @@ st.markdown("""
     .tutorial-box {
         background-color: #1E293B; border-left: 4px solid #38BDF8; padding: 14px 18px; border-radius: 4px 8px 8px 4px; margin-bottom: 20px;
     }
-    .risk-info-box {
-        background-color: #1E293B; border: 1px solid #334155; border-radius: 8px; padding: 15px; margin-bottom: 15px;
+    .pro-badge {
+        background-color: #8B5CF6; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -59,7 +59,7 @@ LANG_DICT = {
         "tab3": "🔮 종합 시뮬레이션 👑",
         "tab4": "🔍 기술적 지표",
         "tab5": "🛡️ 리스크 분석",
-        "tab6": "🏆 유저 랭킹",
+        "tab6": "📄 프로 보고서 👑",
         "calc_btn": "🚀 분석 실행",
         "budget_label": "총 투자 예산",
         "sim_runs": "시뮬레이션 반복 횟수",
@@ -67,12 +67,10 @@ LANG_DICT = {
         "mc_p5": "보수적 (하위 5%)",
         "mc_p50": "중립적 (평균 50%)",
         "mc_p95": "낙관적 (상위 5%)",
-        "pro_lock": "👑 Pro 전용 기능입니다. 버전 선택에서 Pro 모드로 전환하세요.",
+        "pro_lock": "👑 Pro 전용 기능입니다. 메뉴에서 Pro 모드로 전환해주세요.",
         "tut_title": "📖 Quick 가이드",
-        "tut_body": "1️⃣ <b>종목 선택</b>: 왼쪽 섹터에서 원하는 종목을 체크하세요.<br>2️⃣ <b>비중 설정</b>: <code>🎯 포트폴리오 계산기</code>에서 비중을 입력하고 [🚀 분석 실행]을 누르세요.<br>3️⃣ <b>리스크 분석</b>: 종목 간 상관관계와 최대 하락폭(MDD)을 확인해보세요.",
-        "contact": "🤝 서비스 문의",
-        "rank_empty": "🏆 아직 등록된 포트폴리오가 없습니다. 분석 실행 후 [랭킹에 내 포트폴리오 등록]을 눌러보세요!",
-        "submit_rank": "🏆 내 포트폴리오 랭킹에 등록하기"
+        "tut_body": "1️⃣ <b>종목 선택</b>: 왼쪽 섹터에서 원하는 종목을 체크하세요.<br>2️⃣ <b>비중 설정</b>: <code>🎯 포트폴리오 계산기</code>에서 비중을 입력하고 [🚀 분석 실행]을 누르세요.<br>3️⃣ <b>보고서 다운로드</b>: <code>📄 프로 보고서</code> 탭에서 전체 종합 리포트를 저장할 수 있습니다.",
+        "contact": "🤝 서비스 문의"
     },
     "English": {
         "title": "🧪 StockLab",
@@ -93,7 +91,7 @@ LANG_DICT = {
         "tab3": "🔮 Asset Simulation 👑",
         "tab4": "🔍 Technicals",
         "tab5": "🛡️ Risk Metrics",
-        "tab6": "🏆 Leaderboard",
+        "tab6": "📄 Pro Report 👑",
         "calc_btn": "🚀 Run Analytics",
         "budget_label": "Total Investment Budget",
         "sim_runs": "Simulation Runs",
@@ -101,12 +99,10 @@ LANG_DICT = {
         "mc_p5": "Conservative (Worst 5%)",
         "mc_p50": "Moderate (Average 50%)",
         "mc_p95": "Optimistic (Best 5%)",
-        "pro_lock": "👑 Pro feature only. Please switch to Pro mode in the Version menu.",
+        "pro_lock": "👑 Pro feature only. Please switch to Pro mode in the menu.",
         "tut_title": "📖 Quick Start Guide",
-        "tut_body": "1️⃣ <b>Select Assets</b>: Check tickers in sidebar.<br>2️⃣ <b>Set Weight</b>: Enter weights in Portfolio Calculator.<br>3️⃣ <b>Risk Analysis</b>: Check correlation heatmaps and Max Drawdown (MDD).",
-        "contact": "🤝 Contact Us",
-        "rank_empty": "🏆 No registered portfolios yet. Be the first to register yours!",
-        "submit_rank": "🏆 Submit My Portfolio to Leaderboard"
+        "tut_body": "1️⃣ <b>Select Assets</b>: Check tickers in sidebar.<br>2️⃣ <b>Set Weight</b>: Enter weights in Portfolio Calculator.<br>3️⃣ <b>Pro Report</b>: Download the complete portfolio analysis report.",
+        "contact": "🤝 Contact Us"
     },
     "日本語": {
         "title": "🧪 ストックラボ (StockLab)",
@@ -127,7 +123,7 @@ LANG_DICT = {
         "tab3": "🔮 総合シミュレーション 👑",
         "tab4": "🔍 テクニカル指標",
         "tab5": "🛡️ リスク分析",
-        "tab6": "🏆 ランキング",
+        "tab6": "📄 Pro レポート 👑",
         "calc_btn": "🚀 分析実行",
         "budget_label": "総投資予算",
         "sim_runs": "試行回数",
@@ -135,12 +131,10 @@ LANG_DICT = {
         "mc_p5": "保守的 (下位5%)",
         "mc_p50": "標準 (中央50%)",
         "mc_p95": "楽観的 (上位5%)",
-        "pro_lock": "👑 Pro専用機能です。バージョン選択でProモードに切り替えてください。",
+        "pro_lock": "👑 Pro専用機能です。Proモードに切り替えてください。",
         "tut_title": "📖 Quick ガイド",
-        "tut_body": "1️⃣ <b>銘柄選択</b>: サイドバーで銘柄を選択します。<br>2️⃣ <b>比率設定</b>: ポートフォリオ計算機で比率を入力します。<br>3️⃣ <b>リスク分析</b>: 相関行列と最大ドローダウン(MDD)を確認します。",
-        "contact": "🤝 お問い合わせ",
-        "rank_empty": "🏆 登録されたポートフォリオはまだありません。最初のポートフォリオを登録してみましょう！",
-        "submit_rank": "🏆 ランキングに登録する"
+        "tut_body": "1️⃣ <b>銘柄選択</b>: サイドバーで銘柄を選択します。<br>2️⃣ <b>比率設定</b>: 計算機で比率を入力します。<br>3️⃣ <b>Pro レポート</b>: 総合分析レポートを保存できます。",
+        "contact": "🤝 お問い合わせ"
     },
     "中文": {
         "title": "🧪 股票实验室 (StockLab)",
@@ -161,7 +155,7 @@ LANG_DICT = {
         "tab3": "🔮 综合模拟预测 👑",
         "tab4": "🔍 技术指标",
         "tab5": "🛡️ 风险分析",
-        "tab6": "🏆 排行榜",
+        "tab6": "📄 Pro 报告 👑",
         "calc_btn": "🚀 开始分析",
         "budget_label": "总投资预算",
         "sim_runs": "模拟重复次数",
@@ -169,12 +163,10 @@ LANG_DICT = {
         "mc_p5": "保守 (下位 5%)",
         "mc_p50": "基准 (平均 50%)",
         "mc_p95": "乐观 (上位 5%)",
-        "pro_lock": "👑 此功能仅限 Pro 用户。请在版本菜单中切换至 Pro 模式。",
+        "pro_lock": "👑 此功能仅限 Pro 用户。请切换至 Pro 模式。",
         "tut_title": "📖 快速指南",
-        "tut_body": "1️⃣ <b>选择股票</b>: 在侧边栏勾选股票。<br>2️⃣ <b>设置权重</b>: 输入比重并点击开始分析。<br>3️⃣ <b>风险分析</b>: 查看相关系数矩阵及最大回撤 (MDD)。",
-        "contact": "🤝 联系我们",
-        "rank_empty": "🏆 暂无已注册的投资组合。快来提交您的第一个组合吧！",
-        "submit_rank": "🏆 提交组合至排行榜"
+        "tut_body": "1️⃣ <b>选择股票</b>: 在侧边栏勾选股票。<br>2️⃣ <b>设置权重</b>: 输入比重并点击开始分析。<br>3️⃣ <b>Pro 报告</b>: 下载完整的组合分析报告。",
+        "contact": "🤝 联系我们"
     }
 }
 
@@ -364,7 +356,7 @@ if selected_tickers:
                     'port_daily_ret': port_daily_ret
                 }
 
-        # TAB 3: Asset Simulation
+        # TAB 3: Asset Simulation (Pro 전용 고급 시뮬레이션 지원)
         with tab3:
             if not is_pro:
                 st.warning(L["pro_lock"])
@@ -376,17 +368,15 @@ if selected_tickers:
                     with col_mc1:
                         user_budget = st.number_input(f"{L['budget_label']} ({curr_symbol})", min_value=float(100*fx_rate), value=float(default_budget), step=float(500*fx_rate))
                     with col_mc2:
-                        sim_runs = st.selectbox(L["sim_runs"], [1000, 5000, 10000], index=0)
+                        # Pro 유저는 10,000회 고성능 시뮬레이션 가능
+                        sim_runs = st.selectbox(f"{L['sim_runs']} (👑 Pro 10k 가능)", [1000, 5000, 10000], index=2)
 
-                    # Expander로 안내 숨김 처리
-                    with st.expander("💡 **시뮬레이션 원리 및 종목별 배분 가이드 보기**"):
+                    with st.expander("💡 **시뮬레이션 원리 보기**"):
                         st.markdown("""
-                        * **몬테카를로 시뮬레이션**: 과거 종목들의 일일 수익률/변동성을 바탕으로 1년 후 발생 가능한 주가 경로를 무작위 산출합니다.
-                        * **하위 5% (보수적)**: 주식 시장이 폭락하는 극단적 악재 상황의 예상 잔고입니다.
-                        * **상위 5% (낙관적)**: 강력한 상승장이 지속되는 호재 상황의 예상 잔고입니다.
+                        * **몬테카를로 시뮬레이션**: 과거 종목들의 변동성을 바탕으로 1년 후 발생 가능한 10,000개의 무작위 자산 경로를 정밀 산출합니다.
                         """)
 
-                    st.markdown("##### 📌 종목별 투자금 배분")
+                    st.markdown("##### 📌 종목별 예상 투자금 배분")
                     alloc_cols = st.columns(min(len(sum_data['valid_tickers']), 4))
                     for idx, (t, w) in enumerate(zip(sum_data['valid_tickers'], sum_data['weights'])):
                         allocated_amt = user_budget * (w / 100.0)
@@ -409,8 +399,8 @@ if selected_tickers:
                         sim_results[t] = sim_results[t-1] * (1 + rand_shocks)
 
                     fig_mc = go.Figure()
-                    for i in range(min(sim_runs, 30)):
-                        fig_mc.add_trace(go.Scatter(y=sim_results[:, i], mode='lines', line=dict(width=1), opacity=0.25, showlegend=False))
+                    for i in range(min(sim_runs, 40)):
+                        fig_mc.add_trace(go.Scatter(y=sim_results[:, i], mode='lines', line=dict(width=1), opacity=0.2, showlegend=False))
                     update_chart_layout(fig_mc)
                     st.plotly_chart(fig_mc, use_container_width=True)
 
@@ -426,39 +416,32 @@ if selected_tickers:
                 else:
                     st.info("Tab 2에서 [🚀 분석 실행]을 먼저 클릭하세요.")
 
-        # TAB 4: Technicals (Expander로 지표 설명 추가)
+        # TAB 4: Technicals
         with tab4:
             selected_ticker = st.selectbox("Ticker", options=valid_tickers, format_func=lambda x: get_disp_name(x, selected_lang), index=0)
             stock_series = valid_data[selected_ticker] * fx_rate
             
-            with st.expander("❓ **기술적 지표 용어 정리가 필요하신가요? (클릭해서 펼치기)**"):
+            with st.expander("❓ **기술적 지표 용어 설명 (클릭해서 펼치기)**"):
                 st.markdown("""
-                * **이동평균선 (Moving Average, MA 50)**: 최근 50일간의 평균 주가입니다. 주가가 이 선 위에 있으면 **상승 추세**, 아래에 있으면 **하락 추세**로 해석합니다.
-                * **RSI (상대강도지수)**: 주가의 과열 정도를 측정합니다. **70 이상**은 과매수(수익실현 고려), **30 이하**는 과매도(저점 매수 고려) 구간입니다.
+                * **이동평균선 (MA 50)**: 최근 50일간의 평균 주가입니다. 주가가 선 위에 있으면 상승 추세로 해석합니다.
                 """)
 
-            # 주가 + MA50
             fig_detail = go.Figure()
             fig_detail.add_trace(go.Scatter(x=stock_series.index, y=stock_series, mode='lines', name='Price', line=dict(color='#38BDF8')))
-            fig_detail.add_trace(go.Scatter(x=stock_series.index, y=stock_series.rolling(50).mean(), mode='lines', name='MA 50 (50일 평균)', line=dict(color='#F59E0B')))
+            fig_detail.add_trace(go.Scatter(x=stock_series.index, y=stock_series.rolling(50).mean(), mode='lines', name='MA 50', line=dict(color='#F59E0B')))
             update_chart_layout(fig_detail)
             st.plotly_chart(fig_detail, use_container_width=True)
 
-        # TAB 5: Risk Analysis (초보자 친화적 개편 + 추가 지표)
+        # TAB 5: Risk Analysis
         with tab5:
             st.markdown("### 🛡️ 포트폴리오 리스크 완벽 분석")
-            
             with st.expander("💡 **리스크 지표 쉬운 설명서 (클릭해서 펼치기)**"):
                 st.markdown("""
-                * **상관관계(Correlation)란?**: 종목들이 얼마나 **함께 움직이는지** 나타냅니다.
-                  - **`+1.0`에 가까움**: 두 종목이 같이 오르고 같이 떨어집니다 (분산투자 효과 낮음).
-                  - **`0.0`에 가까움**: 두 종목이 서로 상관없이 제각각 움직입니다 (분산투자 효과 높음).
-                  - **`-1.0`에 가까움**: 한 종목이 오르면 다른 종목은 떨어집니다.
-                * **최대 낙폭(MDD, Max Drawdown)**: 전고점 대비 **가장 크게 폭락했을 때의 하락률**입니다. 내 통장이 버틸 수 있는 '매집 한계선'을 뜻합니다.
+                * **상관관계(Correlation)**: 종목 간 움직임이 같으면 +1.0에 가까워지며, 분산투자 효과를 보려면 0.0 근처가 유리합니다.
+                * **최대 낙폭(MDD)**: 전고점 대비 최대 하락 비율입니다.
                 """)
 
             col_r1, col_r2 = st.columns(2)
-            
             with col_r1:
                 st.markdown("##### 1. 종목 간 상관관계 히트맵")
                 daily_returns = valid_data.pct_change().dropna()
@@ -472,7 +455,7 @@ if selected_tickers:
                 st.plotly_chart(fig_corr, use_container_width=True)
 
             with col_r2:
-                st.markdown("##### 2. 종목별 최대 낙폭 (MDD, 최근 1년)")
+                st.markdown("##### 2. 종목별 최대 낙폭 (MDD)")
                 mdd_dict = {}
                 for t in valid_tickers:
                     s = valid_data[t]
@@ -485,28 +468,63 @@ if selected_tickers:
                 update_chart_layout(fig_mdd)
                 st.plotly_chart(fig_mdd, use_container_width=True)
 
-        # TAB 6: Leaderboard
+        # TAB 6: Pro Report (프로 전용 종합 HTML 보고서 생성)
         with tab6:
-            if 'rankings' not in st.session_state:
-                st.session_state['rankings'] = []
-
-            sum_data = st.session_state.get('summary_data', None)
-            if sum_data:
-                if st.button(L["submit_rank"], use_container_width=True):
-                    entry = {
-                        "등록일시": datetime.now().strftime("%Y-%m-%d %H:%M"),
-                        "수익률 (%)": f"{sum_data['tot_return']:+.2f}%",
-                        "포트폴리오 구성": ", ".join([f"{t}({w}%)" for t, w in zip(sum_data['valid_tickers'], sum_data['weights']) if w > 0])
-                    }
-                    st.session_state['rankings'].append(entry)
-                    st.success("랭킹에 성공적으로 등록되었습니다!")
-
-            st.markdown("---")
-            if not st.session_state['rankings']:
-                st.info(L["rank_empty"])
+            st.markdown("### 📄 프로 전용 포트폴리오 종합 진단서")
+            if not is_pro:
+                st.warning(L["pro_lock"])
             else:
-                rank_df = pd.DataFrame(st.session_state['rankings'])
-                st.dataframe(rank_df, use_container_width=True)
+                sum_data = st.session_state.get('summary_data', None)
+                if sum_data:
+                    st.success("✅ 포트폴리오 분석 결과가 준비되었습니다.")
+                    
+                    # 리포트 데이터 준비
+                    port_summary = ", ".join([f"{get_disp_name(t, selected_lang)} ({w}%)" for t, w in zip(sum_data['valid_tickers'], sum_data['weights']) if w > 0])
+                    tot_ret = sum_data['tot_return']
+                    
+                    # HTML 보고서 생성
+                    report_html = f"""
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset="utf-8">
+                        <title>StockLab Pro Report</title>
+                        <style>
+                            body {{ font-family: Arial, sans-serif; background: #0F172A; color: #E2E8F0; padding: 30px; }}
+                            .card {{ background: #1E293B; border: 1px solid #334155; padding: 20px; border-radius: 8px; margin-bottom: 20px; }}
+                            h1 {{ color: #38BDF8; }}
+                            .highlight {{ font-size: 20px; font-weight: bold; color: #10B981; }}
+                        </style>
+                    </head>
+                    <body>
+                        <h1>🧪 StockLab Pro Portfolio Report</h1>
+                        <p>발행일시: {datetime.now().strftime("%Y-%m-%d %H:%M")}</p>
+                        <hr>
+                        <div class="card">
+                            <h3>📌 포트폴리오 구성</h3>
+                            <p>{port_summary}</p>
+                        </div>
+                        <div class="card">
+                            <h3>📊 최근 1년 종합 수익률</h3>
+                            <p class="highlight">{tot_ret:+.2f}%</p>
+                        </div>
+                        <div class="card">
+                            <h3>🛡️ 리스크 진단</h3>
+                            <p>본 포트폴리오는 선택된 미국 대표 종목들을 기반으로 시뮬레이션되었습니다.</p>
+                        </div>
+                    </body>
+                    </html>
+                    """
+                    
+                    st.download_button(
+                        label="📥 종합 보고서 HTML 파일 다운로드",
+                        data=report_html,
+                        file_name=f"StockLab_Report_{datetime.now().strftime('%Y%m%d')}.html",
+                        mime="text/html",
+                        use_container_width=True
+                    )
+                else:
+                    st.info("Tab 2에서 [🚀 분석 실행]을 먼저 클릭하세요.")
 
         st.sidebar.markdown("---")
         st.sidebar.markdown(f"### {L['contact']}")
