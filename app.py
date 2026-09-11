@@ -32,8 +32,21 @@ st.markdown("""
     .tutorial-box {
         background-color: #1E293B; border-left: 4px solid #38BDF8; padding: 14px 18px; border-radius: 4px 8px 8px 4px; margin-bottom: 20px;
     }
-    .pro-badge {
-        background-color: #8B5CF6; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;
+    
+    /* 프로 보고서 대시보드 카드 스타일 */
+    .pro-report-card {
+        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+        border: 1px solid #38BDF8;
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 20px rgba(56, 189, 248, 0.15);
+    }
+    .pro-report-title {
+        font-size: 1.4rem; font-weight: 800; color: #38BDF8; margin-bottom: 8px;
+    }
+    .pro-metric-box {
+        background-color: #0F172A; border: 1px solid #334155; padding: 15px; border-radius: 8px; text-align: center;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -69,7 +82,7 @@ LANG_DICT = {
         "mc_p95": "낙관적 (상위 5%)",
         "pro_lock": "👑 Pro 전용 기능입니다. 메뉴에서 Pro 모드로 전환해주세요.",
         "tut_title": "📖 Quick 가이드",
-        "tut_body": "1️⃣ <b>종목 선택</b>: 왼쪽 섹터에서 원하는 종목을 체크하세요.<br>2️⃣ <b>비중 설정</b>: <code>🎯 포트폴리오 계산기</code>에서 비중을 입력하고 [🚀 분석 실행]을 누르세요.<br>3️⃣ <b>보고서 다운로드</b>: <code>📄 프로 보고서</code> 탭에서 전체 종합 리포트를 저장할 수 있습니다.",
+        "tut_body": "1️⃣ <b>종목 선택</b>: 왼쪽 섹터에서 원하는 종목을 체크하세요.<br>2️⃣ <b>비중 설정</b>: <code>🎯 포트폴리오 계산기</code>에서 비중을 입력하고 [🚀 분석 실행]을 누르세요.<br>3️⃣ <b>프로 보고서</b>: <code>📄 프로 보고서</code> 탭에서 전체 진단 결과를 한눈에 확인하세요.",
         "contact": "🤝 서비스 문의"
     },
     "English": {
@@ -101,7 +114,7 @@ LANG_DICT = {
         "mc_p95": "Optimistic (Best 5%)",
         "pro_lock": "👑 Pro feature only. Please switch to Pro mode in the menu.",
         "tut_title": "📖 Quick Start Guide",
-        "tut_body": "1️⃣ <b>Select Assets</b>: Check tickers in sidebar.<br>2️⃣ <b>Set Weight</b>: Enter weights in Portfolio Calculator.<br>3️⃣ <b>Pro Report</b>: Download the complete portfolio analysis report.",
+        "tut_body": "1️⃣ <b>Select Assets</b>: Check tickers in sidebar.<br>2️⃣ <b>Set Weight</b>: Enter weights in Portfolio Calculator.<br>3️⃣ <b>Pro Report</b>: Check the complete portfolio dashboard.",
         "contact": "🤝 Contact Us"
     },
     "日本語": {
@@ -133,7 +146,7 @@ LANG_DICT = {
         "mc_p95": "楽観的 (上位5%)",
         "pro_lock": "👑 Pro専用機能です。Proモードに切り替えてください。",
         "tut_title": "📖 Quick ガイド",
-        "tut_body": "1️⃣ <b>銘柄選択</b>: サイドバーで銘柄を選択します。<br>2️⃣ <b>比率設定</b>: 計算機で比率を入力します。<br>3️⃣ <b>Pro レポート</b>: 総合分析レポートを保存できます。",
+        "tut_body": "1️⃣ <b>銘柄選択</b>: サイドバーで銘柄を選択します。<br>2️⃣ <b>比率設定</b>: 計算機で比率を入力します。<br>3️⃣ <b>Pro レポート</b>: 総合分析ダッシュボードを確認できます。",
         "contact": "🤝 お問い合わせ"
     },
     "中文": {
@@ -165,7 +178,7 @@ LANG_DICT = {
         "mc_p95": "乐观 (上位 5%)",
         "pro_lock": "👑 此功能仅限 Pro 用户。请切换至 Pro 模式。",
         "tut_title": "📖 快速指南",
-        "tut_body": "1️⃣ <b>选择股票</b>: 在侧边栏勾选股票。<br>2️⃣ <b>设置权重</b>: 输入比重并点击开始分析。<br>3️⃣ <b>Pro 报告</b>: 下载完整的组合分析报告。",
+        "tut_body": "1️⃣ <b>选择股票</b>: 在侧边栏勾选股票。<br>2️⃣ <b>设置权重</b>: 输入比重并点击开始分析。<br>3️⃣ <b>Pro 报告</b>: 查看完整的组合分析面板。",
         "contact": "🤝 联系我们"
     }
 }
@@ -356,7 +369,7 @@ if selected_tickers:
                     'port_daily_ret': port_daily_ret
                 }
 
-        # TAB 3: Asset Simulation (Pro 전용 고급 시뮬레이션 지원)
+        # TAB 3: Asset Simulation (Pro 전용)
         with tab3:
             if not is_pro:
                 st.warning(L["pro_lock"])
@@ -368,13 +381,7 @@ if selected_tickers:
                     with col_mc1:
                         user_budget = st.number_input(f"{L['budget_label']} ({curr_symbol})", min_value=float(100*fx_rate), value=float(default_budget), step=float(500*fx_rate))
                     with col_mc2:
-                        # Pro 유저는 10,000회 고성능 시뮬레이션 가능
                         sim_runs = st.selectbox(f"{L['sim_runs']} (👑 Pro 10k 가능)", [1000, 5000, 10000], index=2)
-
-                    with st.expander("💡 **시뮬레이션 원리 보기**"):
-                        st.markdown("""
-                        * **몬테카를로 시뮬레이션**: 과거 종목들의 변동성을 바탕으로 1년 후 발생 가능한 10,000개의 무작위 자산 경로를 정밀 산출합니다.
-                        """)
 
                     st.markdown("##### 📌 종목별 예상 투자금 배분")
                     alloc_cols = st.columns(min(len(sum_data['valid_tickers']), 4))
@@ -420,11 +427,6 @@ if selected_tickers:
         with tab4:
             selected_ticker = st.selectbox("Ticker", options=valid_tickers, format_func=lambda x: get_disp_name(x, selected_lang), index=0)
             stock_series = valid_data[selected_ticker] * fx_rate
-            
-            with st.expander("❓ **기술적 지표 용어 설명 (클릭해서 펼치기)**"):
-                st.markdown("""
-                * **이동평균선 (MA 50)**: 최근 50일간의 평균 주가입니다. 주가가 선 위에 있으면 상승 추세로 해석합니다.
-                """)
 
             fig_detail = go.Figure()
             fig_detail.add_trace(go.Scatter(x=stock_series.index, y=stock_series, mode='lines', name='Price', line=dict(color='#38BDF8')))
@@ -434,13 +436,6 @@ if selected_tickers:
 
         # TAB 5: Risk Analysis
         with tab5:
-            st.markdown("### 🛡️ 포트폴리오 리스크 완벽 분석")
-            with st.expander("💡 **리스크 지표 쉬운 설명서 (클릭해서 펼치기)**"):
-                st.markdown("""
-                * **상관관계(Correlation)**: 종목 간 움직임이 같으면 +1.0에 가까워지며, 분산투자 효과를 보려면 0.0 근처가 유리합니다.
-                * **최대 낙폭(MDD)**: 전고점 대비 최대 하락 비율입니다.
-                """)
-
             col_r1, col_r2 = st.columns(2)
             with col_r1:
                 st.markdown("##### 1. 종목 간 상관관계 히트맵")
@@ -468,61 +463,52 @@ if selected_tickers:
                 update_chart_layout(fig_mdd)
                 st.plotly_chart(fig_mdd, use_container_width=True)
 
-        # TAB 6: Pro Report (프로 전용 종합 HTML 보고서 생성)
+        # TAB 6: Pro Report (파일 다운로드 없이 화면에 직관적인 대시보드로 시각화)
         with tab6:
-            st.markdown("### 📄 프로 전용 포트폴리오 종합 진단서")
             if not is_pro:
                 st.warning(L["pro_lock"])
             else:
                 sum_data = st.session_state.get('summary_data', None)
                 if sum_data:
-                    st.success("✅ 포트폴리오 분석 결과가 준비되었습니다.")
-                    
-                    # 리포트 데이터 준비
-                    port_summary = ", ".join([f"{get_disp_name(t, selected_lang)} ({w}%)" for t, w in zip(sum_data['valid_tickers'], sum_data['weights']) if w > 0])
                     tot_ret = sum_data['tot_return']
+                    cls_color = "#10B981" if tot_ret >= 0 else "#EF4444"
+                    sign = "+" if tot_ret >= 0 else ""
                     
-                    # HTML 보고서 생성
-                    report_html = f"""
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <meta charset="utf-8">
-                        <title>StockLab Pro Report</title>
-                        <style>
-                            body {{ font-family: Arial, sans-serif; background: #0F172A; color: #E2E8F0; padding: 30px; }}
-                            .card {{ background: #1E293B; border: 1px solid #334155; padding: 20px; border-radius: 8px; margin-bottom: 20px; }}
-                            h1 {{ color: #38BDF8; }}
-                            .highlight {{ font-size: 20px; font-weight: bold; color: #10B981; }}
-                        </style>
-                    </head>
-                    <body>
-                        <h1>🧪 StockLab Pro Portfolio Report</h1>
-                        <p>발행일시: {datetime.now().strftime("%Y-%m-%d %H:%M")}</p>
-                        <hr>
-                        <div class="card">
-                            <h3>📌 포트폴리오 구성</h3>
-                            <p>{port_summary}</p>
+                    # 1. 상단 프로 진단 헤더 카드
+                    st.markdown(f"""
+                    <div class="pro-report-card">
+                        <div class="pro-report-title">👑 StockLab Pro 포트폴리오 종합 진단서</div>
+                        <div style="color: #94A3B8; font-size: 0.85rem; margin-bottom: 15px;">
+                            진단 일시: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")} | 모드: Pro Premium
                         </div>
-                        <div class="card">
-                            <h3>📊 최근 1년 종합 수익률</h3>
-                            <p class="highlight">{tot_ret:+.2f}%</p>
+                        <div style="display: flex; gap: 20px; align-items: center;">
+                            <div style="font-size: 2rem; font-weight: 800; color: {cls_color};">
+                                1년 수익률: {sign}{tot_ret:.2f}%
+                            </div>
                         </div>
-                        <div class="card">
-                            <h3>🛡️ 리스크 진단</h3>
-                            <p>본 포트폴리오는 선택된 미국 대표 종목들을 기반으로 시뮬레이션되었습니다.</p>
-                        </div>
-                    </body>
-                    </html>
-                    """
-                    
-                    st.download_button(
-                        label="📥 종합 보고서 HTML 파일 다운로드",
-                        data=report_html,
-                        file_name=f"StockLab_Report_{datetime.now().strftime('%Y%m%d')}.html",
-                        mime="text/html",
-                        use_container_width=True
-                    )
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    # 2. 종목 비중 파이 차트 시각화
+                    col_rp1, col_rp2 = st.columns([1, 1])
+                    with col_rp1:
+                        st.markdown("##### 📌 자산 배분 비중")
+                        fig_pie = px.pie(
+                            names=[get_disp_name(t, selected_lang) for t in sum_data['valid_tickers']],
+                            values=sum_data['weights'],
+                            hole=0.4,
+                            color_discrete_sequence=px.colors.qualitative.Pastel
+                        )
+                        update_chart_layout(fig_pie)
+                        st.plotly_chart(fig_pie, use_container_width=True)
+
+                    with col_rp2:
+                        st.markdown("##### 💡 AI 핵심 포트폴리오 가이드")
+                        st.markdown(f"""
+                        * **수익성 평가**: 최근 1년간 S&P 500 대비 **{sign}{tot_ret:.1f}%** 성과를 기록했습니다.
+                        * **비중 밸런스**: 총 **{len(sum_data['valid_tickers'])}개 종목**으로 분산 구성되어 있습니다.
+                        * **리스크 가이드**: 특정 IT/기술주 비중이 높다면 변동성에 유의하세요.
+                        """)
                 else:
                     st.info("Tab 2에서 [🚀 분석 실행]을 먼저 클릭하세요.")
 
