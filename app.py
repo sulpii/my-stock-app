@@ -38,15 +38,20 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 🌐 완벽 검증 다국어 사전 (중국어 포함)
+# 🌐 완벽 검증 다국어 사전 (섹터명 다국어 번역 포함)
 LANG_DICT = {
     "한국어": {
         "title": "🧪 스톡랩 (StockLab)",
         "subtitle": "3초 만에 검증하는 미국 주식 포트폴리오 시뮬레이터",
         "ver_select": "📌 버전 / 모드 선택",
-        "settings": "⚙️ 기본 설정",
         "currency_select": "🔤 표시 통화",
         "sector_title": "🗂️ 섹터 선택",
+        "sectors": {
+            "IT / 반도체": ["NVDA", "AAPL", "MSFT", "AVGO", "AMD", "TSM"],
+            "빅테크 / 미디어": ["GOOGL", "META", "NFLX"],
+            "커머스 / 모빌리티": ["AMZN", "TSLA", "NKE", "SBUX"],
+            "소비재 / 대표 ETF": ["KO", "PEP", "WMT", "SPY", "QQQ"]
+        },
         "ticker_title": "📌 종목 선택",
         "curr_price": "📌 실시간 종목 시세",
         "tab1": "📊 성과 비교",
@@ -71,9 +76,14 @@ LANG_DICT = {
         "title": "🧪 StockLab",
         "subtitle": "US Stock Portfolio Simulator in 3 Seconds",
         "ver_select": "📌 Version / Mode",
-        "settings": "⚙️ Basic Settings",
         "currency_select": "🔤 Currency",
         "sector_title": "🗂️ Select Sector",
+        "sectors": {
+            "IT / Tech & Semi": ["NVDA", "AAPL", "MSFT", "AVGO", "AMD", "TSM"],
+            "Big Tech / Media": ["GOOGL", "META", "NFLX"],
+            "Commerce / Mobility": ["AMZN", "TSLA", "NKE", "SBUX"],
+            "Consumer / Major ETFs": ["KO", "PEP", "WMT", "SPY", "QQQ"]
+        },
         "ticker_title": "📌 Select Assets",
         "curr_price": "📌 Real-Time Market Prices",
         "tab1": "📊 Performance",
@@ -98,9 +108,14 @@ LANG_DICT = {
         "title": "🧪 ストックラボ (StockLab)",
         "subtitle": "3秒で検証する米国株ポートフォリオシミュレーター",
         "ver_select": "📌 バージョン / モード選択",
-        "settings": "⚙️ 基本設定",
         "currency_select": "🔤 表示通貨",
         "sector_title": "🗂️ セクター選択",
+        "sectors": {
+            "IT / 半導体": ["NVDA", "AAPL", "MSFT", "AVGO", "AMD", "TSM"],
+            "ビッグテック / メディア": ["GOOGL", "META", "NFLX"],
+            "コマース / モビリティ": ["AMZN", "TSLA", "NKE", "SBUX"],
+            "消費財 / 代表 ETF": ["KO", "PEP", "WMT", "SPY", "QQQ"]
+        },
         "ticker_title": "📌 銘柄選択",
         "curr_price": "📌 リアルタイム株価",
         "tab1": "📊 パフォーマンス比較",
@@ -125,9 +140,14 @@ LANG_DICT = {
         "title": "🧪 股票实验室 (StockLab)",
         "subtitle": "3秒验证美股投资组合模拟器",
         "ver_select": "📌 版本 / 模式选择",
-        "settings": "⚙️ 基本设置",
         "currency_select": "🔤 显示货币",
         "sector_title": "🗂️ 选择板块",
+        "sectors": {
+            "IT / 半导体": ["NVDA", "AAPL", "MSFT", "AVGO", "AMD", "TSM"],
+            "科技巨头 / 媒体": ["GOOGL", "META", "NFLX"],
+            "电商 / 出行": ["AMZN", "TSLA", "NKE", "SBUX"],
+            "消费品 / 代表 ETF": ["KO", "PEP", "WMT", "SPY", "QQQ"]
+        },
         "ticker_title": "📌 选择股票",
         "curr_price": "📌 实时股票行情",
         "tab1": "📊 收益率对比",
@@ -241,24 +261,18 @@ with st.expander(f"📖 **{L['tut_title']}**", expanded=False):
     </div>
     """, unsafe_allow_html=True)
 
-# Sector Database
-SECTOR_DATABASE = {
-    "IT / 반도체": ["NVDA", "AAPL", "MSFT", "AVGO", "AMD", "TSM"],
-    "빅테크 / 미디어": ["GOOGL", "META", "NFLX"],
-    "커머스 / 모빌리티": ["AMZN", "TSLA", "NKE", "SBUX"],
-    "소비재 / 대표 ETF": ["KO", "PEP", "WMT", "SPY", "QQQ"]
-}
-
+# Dynamic Sector Database based on selected language
+sector_dict = L["sectors"]
 st.sidebar.markdown(f"### {L['sector_title']}")
-selected_sector = st.sidebar.radio("Sector", list(SECTOR_DATABASE.keys()), index=0, label_visibility="collapsed")
-default_pool = SECTOR_DATABASE[selected_sector]
+selected_sector = st.sidebar.radio("Sector", list(sector_dict.keys()), index=0, label_visibility="collapsed")
+default_pool = sector_dict[selected_sector]
 
 st.sidebar.markdown("---")
 st.sidebar.markdown(f"### {L['ticker_title']}")
 selected_tickers = []
 for ticker in default_pool:
     disp = get_disp_name(ticker, selected_lang)
-    if st.sidebar.checkbox(f"{disp}", value=(ticker in default_pool[:3]), key=f"chk_v18_{ticker}"):
+    if st.sidebar.checkbox(f"{disp}", value=(ticker in default_pool[:3]), key=f"chk_v19_{ticker}"):
         selected_tickers.append(ticker)
 
 today = datetime.today()
@@ -286,7 +300,7 @@ if selected_tickers:
         valid_data = data[valid_tickers].dropna()
         spy_data = data['SPY'].dropna() if 'SPY' in data.columns else None
 
-        # Real-time Cards (환율 적용)
+        # Real-time Cards
         st.markdown(f"##### {L['curr_price']} ({curr_symbol})")
         metric_cols = st.columns(min(len(valid_tickers), 4))
         for idx, ticker in enumerate(valid_tickers):
@@ -328,7 +342,7 @@ if selected_tickers:
 
         # TAB 2: Portfolio Calculator
         with tab2:
-            with st.form("portfolio_form_v18"):
+            with st.form("portfolio_form_v19"):
                 weights = []
                 slider_cols = st.columns(min(len(valid_tickers), 4))
                 for i, ticker in enumerate(valid_tickers):
@@ -366,7 +380,7 @@ if selected_tickers:
                     'port_daily_ret': port_daily_ret
                 }
 
-        # TAB 3: Simulation (Pro Only + 통화 반영)
+        # TAB 3: Simulation (Pro Only)
         with tab3:
             if not is_pro:
                 st.warning(L["pro_lock"])
@@ -421,14 +435,25 @@ if selected_tickers:
             update_chart_layout(fig_detail)
             st.plotly_chart(fig_detail, use_container_width=True, config={'scrollZoom': True})
 
-        # TAB 5: Risk Correlation Matrix
+        # TAB 5: Risk Correlation Heatmap (ImportError 해결)
         with tab5:
             st.markdown("### 🛡️ Correlation Matrix")
             daily_returns = valid_data.pct_change().dropna()
             corr_df = daily_returns.corr()
-            corr_df.columns = [get_disp_name(t, selected_lang) for t in corr_df.columns]
-            corr_df.index = [get_disp_name(t, selected_lang) for t in corr_df.index]
-            st.dataframe(corr_df.style.format("{:.2f}").background_gradient(cmap="Blues"), use_container_width=True)
+            labels = [get_disp_name(t, selected_lang) for t in corr_df.columns]
+            
+            fig_corr = go.Figure(data=go.Heatmap(
+                z=corr_df.values,
+                x=labels,
+                y=labels,
+                colorscale='Blues',
+                zmin=-1, zmax=1,
+                text=np.round(corr_df.values, 2),
+                texttemplate="%{text}",
+                textfont={"size": 12}
+            ))
+            update_chart_layout(fig_corr)
+            st.plotly_chart(fig_corr, use_container_width=True)
 
         # TAB 6: Shareable Card (Pro Only)
         with tab6:
