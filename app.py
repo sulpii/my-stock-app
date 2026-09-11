@@ -11,7 +11,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS for Dark Commercial Terminal & UI Polish
+# Custom CSS for UI Polish & Touch Optimization
 st.markdown("""
     <style>
     .stApp {
@@ -25,11 +25,12 @@ st.markdown("""
     .version-tag {
         background-color: #1E293B;
         color: #38BDF8;
-        padding: 4px 10px;
-        border-radius: 6px;
-        font-size: 0.8rem;
-        font-weight: 600;
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 700;
         border: 1px solid #334155;
+        display: inline-block;
     }
     
     .pro-badge {
@@ -63,22 +64,29 @@ st.markdown("""
     .kpi-pos { color: #10B981; }
     .kpi-neg { color: #EF4444; }
     
-    .checkbox-container {
-        max-height: 200px;
-        overflow-y: auto;
+    .stRadio label, .stCheckbox label {
+        padding: 10px 14px !important;
+        background-color: #1E293B;
         border: 1px solid #334155;
-        padding: 10px;
-        border-radius: 8px;
+        border-radius: 8px !important;
+        margin-bottom: 6px !important;
+        width: 100%;
+        cursor: pointer;
+        font-size: 1rem !important;
+    }
+    .stRadio label:hover, .stCheckbox label:hover {
+        border-color: #0EA5E9;
         background-color: #0F172A;
-        margin-bottom: 15px;
     }
     
     .stButton>button {
         background-color: #0EA5E9;
         color: white;
-        border-radius: 6px;
+        border-radius: 8px;
         font-weight: 600;
         border: none;
+        padding: 10px 16px;
+        font-size: 0.95rem;
     }
     .stButton>button:hover {
         background-color: #0284C7;
@@ -87,7 +95,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# Cached Data Fetcher (Optimization: Reduces Lag & Redownloads)
+# Cached Data Fetcher
 # ---------------------------------------------------------
 @st.cache_data(ttl=3600, show_spinner=False)
 def fetch_stock_data(tickers, start, end):
@@ -101,27 +109,17 @@ def fetch_stock_data(tickers, start, end):
     except Exception:
         return pd.DataFrame()
 
-# Sidebar: Version Selector
+# Sidebar: Fixed Version Display
 st.sidebar.markdown("### 📌 서비스 버전")
-selected_version = st.sidebar.selectbox(
-    "사용할 버전을 선택하세요",
-    options=[
-        "v3.1 (고성능 랙 최적화 & 초보자 친화)",
-        "v3.0 (최신 상용화 버전)",
-        "v2.0 (기관급 백테스트)",
-        "v1.0 (기본 시세 조회)"
-    ],
-    index=0,
-    key="app_version_selector"
-)
+st.sidebar.markdown('<span class="version-tag">v3.2 (초고속 반응형)</span>', unsafe_allow_html=True)
 
-st.sidebar.markdown("---")
+st.sidebar.markdown("<br>", unsafe_allow_html=True)
 
 # Plan Selector
 st.sidebar.markdown("### 👑 계정 요금제")
 user_plan = st.sidebar.radio(
     "요금제 선택", 
-    ["Free (일반 무료 플랜)", "Pro (프리미엄 체험)"], 
+    ["Free (일반 무료)", "Pro (프리미엄)"], 
     index=1, 
     key="plan_selector"
 )
@@ -135,16 +133,20 @@ with col_h1:
     st.markdown('<p class="main-header">🧪 스탁랩 (StockLab)</p>', unsafe_allow_html=True)
     st.markdown('<p class="sub-header">초보자도 클릭 몇 번으로 끝내는 나만의 미국 주식 포트폴리오 실험실</p>', unsafe_allow_html=True)
 with col_h2:
-    st.markdown(f'<div style="text-align:right; margin-top:10px;"><span class="version-tag">현재 버전: {selected_version.split()[0]}</span></div>', unsafe_allow_html=True)
+    st.markdown('<div style="text-align:right; margin-top:10px;"><span class="version-tag">v3.2</span></div>', unsafe_allow_html=True)
 
-# Guide Expander
-with st.expander("❓ 초보자용 3초 퀵 스타트 가이드 (처음이신가요? 읽어보세요!)"):
-    st.markdown("""
-    1. **왼쪽 사이드바**에서 투자하고 싶은 **관심 분야(섹터)**를 선택하세요.
-    2. 원하는 주식 종목 체크박스에 **체크(✅)**를 합니다.
-    3. 메인 화면의 **[🎯 내 포트폴리오 수익률 계산기]** 탭에서 주식별 투자 비중을 조절해 보세요.
-    4. 지수(S&P 500) 대비 얼마나 수익을 냈는지 한눈에 확인할 수 있습니다!
-    """)
+# Guide Expander - 클릭 시 끊김 방지용 Fragment
+@st.fragment
+def render_guide():
+    with st.expander("❓ 초보자용 3초 퀵 스타트 가이드"):
+        st.markdown("""
+        1. **왼쪽 사이드바**에서 투자하고 싶은 **관심 분야(섹터)**를 선택하세요.
+        2. 원하는 주식 종목 체크박스에 **체크(✅)**를 합니다.
+        3. 메인 화면의 **[🎯 내 포트폴리오 수익률 계산기]** 탭에서 주식별 투자 비중을 조절해 보세요.
+        4. 지수(S&P 500) 대비 얼마나 수익을 냈는지 한눈에 확인할 수 있습니다!
+        """)
+
+render_guide()
 
 # Sector Database
 SECTOR_DATABASE = {
@@ -159,11 +161,12 @@ SECTOR_DATABASE = {
 
 # Sidebar Selectors
 st.sidebar.markdown("### 🗂️ 1. 투자 분야 선택")
-selected_sector = st.sidebar.selectbox(
-    "원하는 분야를 골라보세요",
+selected_sector = st.sidebar.radio(
+    "분야 선택",
     options=list(SECTOR_DATABASE.keys()),
     index=0,
-    key="unique_sector_select_box"
+    key="unique_sector_radio",
+    label_visibility="collapsed"
 )
 
 default_pool = SECTOR_DATABASE[selected_sector]
@@ -171,40 +174,147 @@ default_pool = SECTOR_DATABASE[selected_sector]
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 📌 2. 포함할 종목 선택")
 selected_tickers = []
-with st.sidebar.container():
-    st.markdown('<div class="checkbox-container">', unsafe_allow_html=True)
-    for ticker in default_pool:
-        is_default = ticker in default_pool[:4]
-        if st.sidebar.checkbox(f"✅ {ticker}", value=is_default, key=f"chk_v7_{selected_sector}_{ticker}"):
-            selected_tickers.append(ticker)
-    st.markdown('</div>', unsafe_allow_html=True)
+for ticker in default_pool:
+    is_default = ticker in default_pool[:4]
+    if st.sidebar.checkbox(f"✅ {ticker}", value=is_default, key=f"chk_v9_{selected_sector}_{ticker}"):
+        selected_tickers.append(ticker)
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("### 📅 3. 분석 기간 선택")
+st.sidebar.markdown("### 📅 3. 투자 분석 기간")
 
 today = datetime.today()
-col_q1, col_q2, col_q3, col_q4 = st.sidebar.columns(4)
 
 if 'start_d' not in st.session_state:
-    st.session_state.start_d = datetime(2023, 1, 1)
-
-if col_q1.button("올해", key="btn_ytd_v7"):
-    st.session_state.start_d = datetime(today.year, 1, 1)
-if col_q2.button("1년", key="btn_1y_v7"):
     st.session_state.start_d = today - timedelta(days=365)
-if col_q3.button("3년", key="btn_3y_v7"):
+
+col_q1, col_q2, col_q3, col_q4 = st.sidebar.columns(4)
+
+if col_q1.button("올해", key="btn_ytd_v9"):
+    st.session_state.start_d = datetime(today.year, 1, 1)
+if col_q2.button("1년", key="btn_1y_v9"):
+    st.session_state.start_d = today - timedelta(days=365)
+if col_q3.button("3년", key="btn_3y_v9"):
     st.session_state.start_d = today - timedelta(days=365*3)
-if col_q4.button("5년", key="btn_5y_v7"):
+if col_q4.button("5년", key="btn_5y_v9"):
     st.session_state.start_d = today - timedelta(days=365*5)
 
-start_date = st.sidebar.date_input("시작일", st.session_state.start_d, key="input_start_d_v7")
-end_date = st.sidebar.date_input("종료일", today, key="input_end_d_v7")
+start_date = st.session_state.start_d
+end_date = today
+
+st.sidebar.caption(f"📅 분석 기간: {start_date.strftime('%Y-%m-%d')} ~ 오늘까지")
 
 analysis_tickers = list(set(selected_tickers + ["SPY"]))
 
+# ---------------------------------------------------------
+# Fragment Functions for Zero-Lag Interaction
+# ---------------------------------------------------------
+@st.fragment
+def render_portfolio_calculator(valid_data, spy_data, valid_tickers):
+    st.markdown("### 🎯 내 맘대로 주식 비중을 조절해 보세요")
+    st.caption("슬라이더를 밀거나 입력칸에 직접 1% 단위 숫자를 작성하여 투자 비중(%)을 결정해 보세요.")
+    
+    if st.button("⚖️ 똑같은 비율로 자동 맞춤 (1/N)", key="btn_equal_w_v9"):
+        equal_w = int(100 / len(valid_tickers))
+        for t in valid_tickers:
+            st.session_state[f"input_w_v9_{t}"] = equal_w
+
+    weights = []
+    slider_cols = st.columns(min(len(valid_tickers), 4))
+    
+    for i, ticker in enumerate(valid_tickers):
+        with slider_cols[i % 4]:
+            key_name = f"input_w_v9_{ticker}"
+            if key_name not in st.session_state:
+                st.session_state[key_name] = int(100 / len(valid_tickers))
+            
+            # 1% 단위 조절 가능한 슬라이더
+            st.slider(
+                f"{ticker} 비중 (%)", 
+                min_value=0, 
+                max_value=100, 
+                step=1, 
+                key=key_name
+            )
+            # 자판 직접 입력이 가능한 서브 인풋 (슬라이더와 값 동기화)
+            st.number_input(
+                f"{ticker} 직접 입력", 
+                min_value=0, 
+                max_value=100, 
+                step=1, 
+                key=key_name, 
+                label_visibility="collapsed"
+            )
+            weights.append(st.session_state[key_name])
+
+    total_weight = sum(weights)
+    
+    if total_weight == 0:
+        st.warning("⚠️ 최소 1개 이상의 주식 비중에 숫자를 넣어주세요.")
+        return
+
+    norm_weights = np.array(weights) / total_weight
+    daily_ret = valid_data.pct_change().dropna()
+    port_daily_ret = (daily_ret * norm_weights).sum(axis=1)
+    port_cum_ret = (1 + port_daily_ret).cumprod() * 100
+
+    spy_daily_ret = spy_data.pct_change().dropna() if spy_data is not None else port_daily_ret
+    spy_cum_ret = (1 + spy_daily_ret).cumprod() * 100
+
+    chart_df = pd.DataFrame({
+        "내 포트폴리오": port_cum_ret,
+        "미국 시장 평균 (S&P 500)": spy_cum_ret
+    }).dropna()
+
+    st.markdown("#### 🚀 내 포트폴리오 vs 미국 시장 평균 수익률")
+    st.line_chart(chart_df, color=["#38BDF8", "#94A3B8"], use_container_width=True)
+
+    cum_roll_max = port_cum_ret.cummax()
+    drawdown = (port_cum_ret - cum_roll_max) / cum_roll_max * 100
+    
+    spy_cum_roll_max = spy_cum_ret.cummax()
+    spy_drawdown = (spy_cum_ret - spy_cum_roll_max) / spy_cum_roll_max * 100
+
+    dd_df = pd.DataFrame({
+        "내 포트폴리오 하락폭 (%)": drawdown,
+        "S&P 500 하락폭 (%)": spy_drawdown
+    }).dropna()
+
+    st.markdown("#### 📉 주가 하락 위험도 (최고점 대비 하락률)")
+    st.area_chart(dd_df, color=["#EF4444", "#475569"], use_container_width=True)
+
+    tot_return = (port_cum_ret.iloc[-1] - 100)
+    spy_tot_return = (spy_cum_ret.iloc[-1] - 100)
+    alpha = tot_return - spy_tot_return
+    
+    ann_vol = port_daily_ret.std() * np.sqrt(252) * 100
+    ann_ret = port_daily_ret.mean() * 252 * 100
+    rf = 4.0
+    sharpe = (ann_ret - rf) / ann_vol if ann_vol != 0 else 0
+    mdd = drawdown.min()
+
+    st.markdown("#### 📊 한눈에 보는 성과 요약")
+    m1, m2, m3, m4, m5 = st.columns(5)
+    m1.metric("총 수익률", f"{tot_return:.2f}%")
+    m2.metric("시장 대비 초과수익", f"{alpha:+.2f}%p", help="S&P 500 지수 대비 수익입니다.")
+    m3.metric("주가 흔들림(변동성)", f"{ann_vol:.2f}%", help="높을수록 변동성이 큽니다.")
+    m4.metric("투자 효율성(샤프지수)", f"{sharpe:.2f}", help="1.0 이상 시 우수합니다.")
+    m5.metric("최대 하락폭(MDD)", f"{mdd:.2f}%", help="최대 폭락 하락률입니다.")
+
+    # 저장용 세션 데이터 업데이트
+    st.session_state['summary_data'] = {
+        'weights_summary': ", ".join([f"{t}: {w}%" for t, w in zip(valid_tickers, weights) if w > 0]),
+        'tot_return': tot_return,
+        'alpha': alpha,
+        'ann_vol': ann_vol,
+        'sharpe': sharpe,
+        'mdd': mdd,
+        'port_daily_ret': port_daily_ret
+    }
+
+# Main Logic
 if selected_tickers:
     with st.spinner('실시간 주가 데이터를 불러오는 중입니다...'):
-        data = fetch_stock_data(tuple(sorted(analysis_tickers)), str(start_date), str(end_date))
+        data = fetch_stock_data(tuple(sorted(analysis_tickers)), str(start_date.strftime('%Y-%m-%d')), str(end_date.strftime('%Y-%m-%d')))
 
     valid_tickers = [t for t in selected_tickers if t in data.columns and not data[t].dropna().empty]
 
@@ -257,76 +367,9 @@ if selected_tickers:
             norm_data = (comparison_df / comparison_df.iloc[0]) * 100
             st.line_chart(norm_data, use_container_width=True)
 
-        # TAB 2: Portfolio Backtester
+        # TAB 2: Portfolio Backtester (Fragment 최적화)
         with tab2:
-            st.markdown("### 🎯 내 맘대로 주식 비중을 조절해 보세요")
-            st.caption("아래 슬라이더를 움직여 각 주식의 투자 비율(%)을 결정하세요.")
-            
-            if st.button("⚖️ 똑같은 비율로 자동 맞춤 (1/N 버튼)", key="btn_equal_w_v7"):
-                equal_w = int(100 / len(valid_tickers))
-                for t in valid_tickers:
-                    st.session_state[f"w_v7_{t}"] = equal_w
-
-            weights = []
-            slider_cols = st.columns(min(len(valid_tickers), 4))
-            for i, ticker in enumerate(valid_tickers):
-                with slider_cols[i % 4]:
-                    default_val = st.session_state.get(f"w_v7_{ticker}", int(100 / len(valid_tickers)))
-                    w = st.slider(f"{ticker} 투자 비중 (%)", 0, 100, default_val, step=5, key=f"w_v7_{ticker}")
-                    weights.append(w)
-
-            total_weight = sum(weights)
-            
-            if total_weight == 0:
-                st.warning("⚠️ 최소 1개 이상의 주식 비중에 숫자를 넣어주세요.")
-            else:
-                norm_weights = np.array(weights) / total_weight
-                daily_ret = valid_data.pct_change().dropna()
-                port_daily_ret = (daily_ret * norm_weights).sum(axis=1)
-                port_cum_ret = (1 + port_daily_ret).cumprod() * 100
-
-                spy_daily_ret = spy_data.pct_change().dropna() if spy_data is not None else port_daily_ret
-                spy_cum_ret = (1 + spy_daily_ret).cumprod() * 100
-
-                chart_df = pd.DataFrame({
-                    "내 포트폴리오": port_cum_ret,
-                    "미국 시장 평균 (S&P 500)": spy_cum_ret
-                }).dropna()
-
-                st.markdown("#### 🚀 내 포트폴리오 vs 미국 시장 평균 수익률")
-                st.line_chart(chart_df, color=["#38BDF8", "#94A3B8"], use_container_width=True)
-
-                cum_roll_max = port_cum_ret.cummax()
-                drawdown = (port_cum_ret - cum_roll_max) / cum_roll_max * 100
-                
-                spy_cum_roll_max = spy_cum_ret.cummax()
-                spy_drawdown = (spy_cum_ret - spy_cum_roll_max) / spy_cum_roll_max * 100
-
-                dd_df = pd.DataFrame({
-                    "내 포트폴리오 하락폭 (%)": drawdown,
-                    "S&P 500 하락폭 (%)": spy_drawdown
-                }).dropna()
-
-                st.markdown("#### 📉 주가 하락 위험도 (최고점 대비 하락률)")
-                st.area_chart(dd_df, color=["#EF4444", "#475569"], use_container_width=True)
-
-                tot_return = (port_cum_ret.iloc[-1] - 100)
-                spy_tot_return = (spy_cum_ret.iloc[-1] - 100)
-                alpha = tot_return - spy_tot_return
-                
-                ann_vol = port_daily_ret.std() * np.sqrt(252) * 100
-                ann_ret = port_daily_ret.mean() * 252 * 100
-                rf = 4.0
-                sharpe = (ann_ret - rf) / ann_vol if ann_vol != 0 else 0
-                mdd = drawdown.min()
-
-                st.markdown("#### 📊 한눈에 보는 성과 요약")
-                m1, m2, m3, m4, m5 = st.columns(5)
-                m1.metric("총 수익률", f"{tot_return:.2f}%")
-                m2.metric("시장 대비 초과수익", f"{alpha:+.2f}%p", help="S&P 500 지수 대비 수익입니다.")
-                m3.metric("주가 흔들림(변동성)", f"{ann_vol:.2f}%", help="높을수록 변동성이 큽니다.")
-                m4.metric("투자 효율성(샤프지수)", f"{sharpe:.2f}", help="1.0 이상 시 우수합니다.")
-                m5.metric("최대 하락폭(MDD)", f"{mdd:.2f}%", help="최대 폭락 하락률입니다.")
+            render_portfolio_calculator(valid_data, spy_data, valid_tickers)
 
         # TAB 3: Monte Carlo Simulation (PRO)
         with tab3:
@@ -337,13 +380,15 @@ if selected_tickers:
                 <div class="upgrade-card">
                     <h3>👑 Pro 플랜 전용 예측 기능입니다</h3>
                     <p style="color:#A5B4FC;">과거 주가 데이터 1,000가지 시나리오를 바탕으로 1년 뒤 내 자산을 예측합니다.</p>
-                    <p style="font-size:0.85rem; color:#67E8F9;">👈 사이드바에서 'Pro (프리미엄 체험)'을 선택하세요!</p>
+                    <p style="font-size:0.85rem; color:#67E8F9;">👈 사이드바에서 'Pro (프리미엄)'을 선택하세요!</p>
                 </div>
                 """, unsafe_allow_html=True)
             else:
                 st.caption("1,000번 가상 시뮬레이션을 돌려 1년 뒤 자산 범위를 산출합니다.")
                 
-                if 'port_daily_ret' in locals() and len(port_daily_ret) > 0:
+                sum_data = st.session_state.get('summary_data', None)
+                if sum_data and 'port_daily_ret' in sum_data:
+                    port_daily_ret = sum_data['port_daily_ret']
                     mc_sims = 1000
                     T = 252 
                     initial_portfolio = 10000 
@@ -373,11 +418,13 @@ if selected_tickers:
                     c_mc1.metric("최악의 경우 (하위 5%)", f"${p5:,.0f}", delta=f"{((p5-10000)/10000)*100:.1f}%")
                     c_mc2.metric("평균적인 경우 (중위 50%)", f"${p50:,.0f}", delta=f"{((p50-10000)/10000)*100:.1f}%")
                     c_mc3.metric("최선의 경우 (상위 5%)", f"${p95:,.0f}", delta=f"{((p95-10000)/10000)*100:.1f}%")
+                else:
+                    st.warning("탭 2에서 포트폴리오 비중을 설정해 주세요.")
 
         # TAB 4: Technical Analysis
         with tab4:
             st.markdown("### 🔍 종목별 심층 분석 및 이동평균선")
-            selected_ticker = st.selectbox("분석할 주식을 선택하세요", valid_tickers, key="sb_tech_ticker_v7")
+            selected_ticker = st.radio("분석할 주식 선택", valid_tickers, horizontal=True, key="sb_tech_ticker_v9")
             
             stock_series = valid_data[selected_ticker]
             sma_50 = stock_series.rolling(window=50).mean()
@@ -447,20 +494,19 @@ if selected_tickers:
                 <div class="upgrade-card">
                     <h3>👑 Pro 플랜 전용 기능입니다</h3>
                     <p style="color:#A5B4FC;">주식 커뮤니티나 카톡, 인스타그램에 공유할 수 있는 요약 텍스트를 생성합니다.</p>
-                    <p style="font-size:0.85rem; color:#67E8F9;">👈 사이드바에서 'Pro (프리미엄 체험)'을 선택해 보세요!</p>
+                    <p style="font-size:0.85rem; color:#67E8F9;">👈 사이드바에서 'Pro (프리미엄)'을 선택해 보세요!</p>
                 </div>
                 """, unsafe_allow_html=True)
             else:
-                if 'total_weight' in locals() and total_weight > 0:
-                    weight_summary = ", ".join([f"{t}: {w}%" for t, w in zip(valid_tickers, weights) if w > 0])
-                    
+                sum_data = st.session_state.get('summary_data', None)
+                if sum_data:
                     st.markdown("#### 📸 커뮤니티/SNS 복사용 요약 텍스트")
                     social_card = f"""
 🧪 [스탁랩 StockLab] 내 미국 주식 포트폴리오 실험 결과!
 ---------------------------------------
-📌 투자 종목 비율: {weight_summary}
-📈 총 수익률: {tot_return:+.2f}% (S&P500 지수 대비 {alpha:+.2f}%p 더 벌었음!)
-🛡️ 안정성 점수: {sharpe:.2f} | 최대 낙폭: {mdd:.2f}%
+📌 투자 종목 비율: {sum_data['weights_summary']}
+📈 총 수익률: {sum_data['tot_return']:+.2f}% (S&P500 지수 대비 {sum_data['alpha']:+.2f}%p 더 벌었음!)
+🛡️ 안정성 점수: {sum_data['sharpe']:.2f} | 최대 낙폭: {sum_data['mdd']:.2f}%
 🧪 스탁랩에서 나만의 주식 조합을 실험해 보세요!
                     """
                     st.code(social_card, language="markdown")
@@ -472,17 +518,17 @@ if selected_tickers:
 
 **1. 선택 종목 및 비중**
 - 투자 분야: {selected_sector}
-- 종목 비중: {weight_summary}
+- 종목 비중: {sum_data['weights_summary']}
 
 **2. 성과 결과 요약**
-- 총 누적 수익률: {tot_return:.2f}%
-- 시장(S&P 500) 대비 초과 수익률: {alpha:+.2f}%p
-- 주가 변동성: {ann_vol:.2f}%
-- 샤프 지수: {sharpe:.2f}
-- 최대 하락폭 (MDD): {mdd:.2f}%
+- 총 누적 수익률: {sum_data['tot_return']:.2f}%
+- 시장(S&P 500) 대비 초과 수익률: {sum_data['alpha']:+.2f}%p
+- 주가 변동성: {sum_data['ann_vol']:.2f}%
+- 샤프 지수: {sum_data['sharpe']:.2f}
+- 최대 하락폭 (MDD): {sum_data['mdd']:.2f}%
                     """
                     st.markdown(report_text)
-                    st.text_area("텍스트 전체 복사하기", report_text, height=180, key="ta_report_v7")
+                    st.text_area("텍스트 전체 복사하기", report_text, height=180, key="ta_report_v9")
                 else:
                     st.warning("탭 2에서 주식 비중을 먼저 설정해 주세요.")
 
@@ -494,7 +540,7 @@ if selected_tickers:
             data=csv_data, 
             file_name="stocklab_data.csv", 
             mime="text/csv",
-            key="btn_csv_download_v7"
+            key="btn_csv_download_v9"
         )
         
         st.sidebar.markdown("---")
