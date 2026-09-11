@@ -119,7 +119,7 @@ if ticker_list:
                 r3.metric("샤프 지수 (Sharpe)", f"{sharpe:.2f}")
                 r4.metric("최대 낙폭 (MDD)", f"{mdd:.2f}%")
 
-        # TAB 3: 개별 종목 기술적 분석 (일반 주식 투자용)
+        # TAB 3: 개별 종목 기술적 분석
         with tab3:
             st.markdown("### 🔍 개별 종목 심층 분석 (이동평균선 & RSI)")
             selected_ticker = st.selectbox("분석할 종목을 선택하세요", valid_tickers)
@@ -156,7 +156,7 @@ if ticker_list:
             else:
                 st.info("ℹ️ **중립 구간 (30 < RSI < 70):** 안정적인 주가 흐름을 유지 중입니다.")
 
-        # TAB 4: 리스크 & 상관관계 분석
+        # TAB 4: 리스크 & 상관관계 분석 (오류 해결 완료 파트)
         with tab4:
             st.markdown("### 🛡️ 자산 간 상관관계 및 리스크 표")
             st.caption("상관계수가 낮은(0에 가깝거나 음수인) 자산들을 조합해야 포트폴리오 위험이 효과적으로 분산됩니다.")
@@ -165,7 +165,7 @@ if ticker_list:
             corr_matrix = daily_returns.corr()
             
             st.markdown("#### 🔗 자산 간 상관관계 행렬 (Correlation Matrix)")
-            st.dataframe(corr_matrix.style.background_gradient(cmap="coolwarm").format("{:.2f}"), use_container_width=True)
+            st.dataframe(corr_matrix.style.format("{:.2f}"), use_container_width=True)
 
             st.markdown("#### 📋 종목별 리스크 지표")
             ann_ret = daily_returns.mean() * 252 * 100
@@ -197,7 +197,6 @@ if ticker_list:
             if 'total_weight' in locals() and total_weight > 0:
                 lang = st.radio("보고서 언어 선택", ["한국어", "English"])
                 
-                # 비중 텍스트 생성
                 weight_summary = ", ".join([f"{t}: {w}%" for t, w in zip(valid_tickers, weights) if w > 0])
                 
                 if lang == "한국어":
