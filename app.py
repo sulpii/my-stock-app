@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 # 1. Page Configuration & Theme
 st.set_page_config(
-    page_title="스탁랩 (StockLab) - 쉬운 주식 포트폴리오 실험실", 
+    page_title="스톡랩 (StockLab) - 쉬운 주식 포트폴리오 실험실", 
     page_icon="🧪", 
     layout="wide"
 )
@@ -25,8 +25,8 @@ st.markdown("""
     .version-tag {
         background-color: #1E293B;
         color: #38BDF8;
-        padding: 6px 14px;
-        border-radius: 8px;
+        padding: 4px 10px;
+        border-radius: 6px;
         font-size: 0.85rem;
         font-weight: 700;
         border: 1px solid #334155;
@@ -109,9 +109,9 @@ def fetch_stock_data(tickers, start, end):
     except Exception:
         return pd.DataFrame()
 
-# Sidebar: Fixed Version Display
+# Sidebar: Version Display (숫자만 표시)
 st.sidebar.markdown("### 📌 서비스 버전")
-st.sidebar.markdown('<span class="version-tag">v3.2 (초고속 반응형)</span>', unsafe_allow_html=True)
+st.sidebar.markdown('<span class="version-tag">v3.2</span>', unsafe_allow_html=True)
 
 st.sidebar.markdown("<br>", unsafe_allow_html=True)
 
@@ -130,12 +130,12 @@ st.sidebar.markdown("---")
 # Header Section
 col_h1, col_h2 = st.columns([4, 1])
 with col_h1:
-    st.markdown('<p class="main-header">🧪 스탁랩 (StockLab)</p>', unsafe_allow_html=True)
+    st.markdown('<p class="main-header">🧪 스톡랩 (StockLab)</p>', unsafe_allow_html=True)
     st.markdown('<p class="sub-header">초보자도 클릭 몇 번으로 끝내는 나만의 미국 주식 포트폴리오 실험실</p>', unsafe_allow_html=True)
 with col_h2:
     st.markdown('<div style="text-align:right; margin-top:10px;"><span class="version-tag">v3.2</span></div>', unsafe_allow_html=True)
 
-# Guide Expander - 클릭 시 끊김 방지용 Fragment
+# Guide Expander
 @st.fragment
 def render_guide():
     with st.expander("❓ 초보자용 3초 퀵 스타트 가이드"):
@@ -176,7 +176,7 @@ st.sidebar.markdown("### 📌 2. 포함할 종목 선택")
 selected_tickers = []
 for ticker in default_pool:
     is_default = ticker in default_pool[:4]
-    if st.sidebar.checkbox(f"✅ {ticker}", value=is_default, key=f"chk_v9_{selected_sector}_{ticker}"):
+    if st.sidebar.checkbox(f"✅ {ticker}", value=is_default, key=f"chk_v10_{selected_sector}_{ticker}"):
         selected_tickers.append(ticker)
 
 st.sidebar.markdown("---")
@@ -189,13 +189,13 @@ if 'start_d' not in st.session_state:
 
 col_q1, col_q2, col_q3, col_q4 = st.sidebar.columns(4)
 
-if col_q1.button("올해", key="btn_ytd_v9"):
+if col_q1.button("올해", key="btn_ytd_v10"):
     st.session_state.start_d = datetime(today.year, 1, 1)
-if col_q2.button("1년", key="btn_1y_v9"):
+if col_q2.button("1년", key="btn_1y_v10"):
     st.session_state.start_d = today - timedelta(days=365)
-if col_q3.button("3년", key="btn_3y_v9"):
+if col_q3.button("3년", key="btn_3y_v10"):
     st.session_state.start_d = today - timedelta(days=365*3)
-if col_q4.button("5년", key="btn_5y_v9"):
+if col_q4.button("5년", key="btn_5y_v10"):
     st.session_state.start_d = today - timedelta(days=365*5)
 
 start_date = st.session_state.start_d
@@ -206,45 +206,64 @@ st.sidebar.caption(f"📅 분석 기간: {start_date.strftime('%Y-%m-%d')} ~ 오
 analysis_tickers = list(set(selected_tickers + ["SPY"]))
 
 # ---------------------------------------------------------
-# Fragment Functions for Zero-Lag Interaction
+# Fragment Functions with Duplicate Key Fix
 # ---------------------------------------------------------
 @st.fragment
 def render_portfolio_calculator(valid_data, spy_data, valid_tickers):
     st.markdown("### 🎯 내 맘대로 주식 비중을 조절해 보세요")
     st.caption("슬라이더를 밀거나 입력칸에 직접 1% 단위 숫자를 작성하여 투자 비중(%)을 결정해 보세요.")
     
-    if st.button("⚖️ 똑같은 비율로 자동 맞춤 (1/N)", key="btn_equal_w_v9"):
+    if st.button("⚖️ 똑같은 비율로 자동 맞춤 (1/N)", key="btn_equal_w_v10"):
         equal_w = int(100 / len(valid_tickers))
         for t in valid_tickers:
-            st.session_state[f"input_w_v9_{t}"] = equal_w
+            st.session_state[f"weight_{t}"] = equal_w
+            st.session_state[f"slider_{t}"] = equal_w
+            st.session_state[f"num_{t}"] = equal_w
 
     weights = []
     slider_cols = st.columns(min(len(valid_tickers), 4))
     
     for i, ticker in enumerate(valid_tickers):
         with slider_cols[i % 4]:
-            key_name = f"input_w_v9_{ticker}"
-            if key_name not in st.session_state:
-                st.session_state[key_name] = int(100 / len(valid_tickers))
+            w_key = f"weight_{ticker}"
+            s_key = f"slider_{ticker}"
+            n_key = f"num_{ticker}"
             
-            # 1% 단위 조절 가능한 슬라이더
+            if w_key not in st.session_state:
+                st.session_state[w_key] = int(100 / len(valid_tickers))
+            if s_key not in st.session_state:
+                st.session_state[s_key] = st.session_state[w_key]
+            if n_key not in st.session_state:
+                st.session_state[n_key] = st.session_state[w_key]
+
+            def sync_from_slider(t=ticker):
+                st.session_state[f"weight_{t}"] = st.session_state[f"slider_{t}"]
+                st.session_state[f"num_{t}"] = st.session_state[f"slider_{t}"]
+
+            def sync_from_num(t=ticker):
+                st.session_state[f"weight_{t}"] = st.session_state[f"num_{t}"]
+                st.session_state[f"slider_{t}"] = st.session_state[f"num_{t}"]
+
+            # 1% 단위 슬라이더 (독립된 Key 적용)
             st.slider(
                 f"{ticker} 비중 (%)", 
                 min_value=0, 
                 max_value=100, 
                 step=1, 
-                key=key_name
+                key=s_key,
+                on_change=sync_from_slider
             )
-            # 자판 직접 입력이 가능한 서브 인풋 (슬라이더와 값 동기화)
+            # 자판 직접 입력칸 (독립된 Key 적용)
             st.number_input(
                 f"{ticker} 직접 입력", 
                 min_value=0, 
                 max_value=100, 
                 step=1, 
-                key=key_name, 
+                key=n_key, 
+                on_change=sync_from_num,
                 label_visibility="collapsed"
             )
-            weights.append(st.session_state[key_name])
+            weights.append(st.session_state[w_key])
 
     total_weight = sum(weights)
     
@@ -300,7 +319,6 @@ def render_portfolio_calculator(valid_data, spy_data, valid_tickers):
     m4.metric("투자 효율성(샤프지수)", f"{sharpe:.2f}", help="1.0 이상 시 우수합니다.")
     m5.metric("최대 하락폭(MDD)", f"{mdd:.2f}%", help="최대 폭락 하락률입니다.")
 
-    # 저장용 세션 데이터 업데이트
     st.session_state['summary_data'] = {
         'weights_summary': ", ".join([f"{t}: {w}%" for t, w in zip(valid_tickers, weights) if w > 0]),
         'tot_return': tot_return,
@@ -367,7 +385,7 @@ if selected_tickers:
             norm_data = (comparison_df / comparison_df.iloc[0]) * 100
             st.line_chart(norm_data, use_container_width=True)
 
-        # TAB 2: Portfolio Backtester (Fragment 최적화)
+        # TAB 2: Portfolio Backtester
         with tab2:
             render_portfolio_calculator(valid_data, spy_data, valid_tickers)
 
@@ -424,7 +442,7 @@ if selected_tickers:
         # TAB 4: Technical Analysis
         with tab4:
             st.markdown("### 🔍 종목별 심층 분석 및 이동평균선")
-            selected_ticker = st.radio("분석할 주식 선택", valid_tickers, horizontal=True, key="sb_tech_ticker_v9")
+            selected_ticker = st.radio("분석할 주식 선택", valid_tickers, horizontal=True, key="sb_tech_ticker_v10")
             
             stock_series = valid_data[selected_ticker]
             sma_50 = stock_series.rolling(window=50).mean()
@@ -502,19 +520,19 @@ if selected_tickers:
                 if sum_data:
                     st.markdown("#### 📸 커뮤니티/SNS 복사용 요약 텍스트")
                     social_card = f"""
-🧪 [스탁랩 StockLab] 내 미국 주식 포트폴리오 실험 결과!
+🧪 [스톡랩 StockLab] 내 미국 주식 포트폴리오 실험 결과!
 ---------------------------------------
 📌 투자 종목 비율: {sum_data['weights_summary']}
 📈 총 수익률: {sum_data['tot_return']:+.2f}% (S&P500 지수 대비 {sum_data['alpha']:+.2f}%p 더 벌었음!)
 🛡️ 안정성 점수: {sum_data['sharpe']:.2f} | 최대 낙폭: {sum_data['mdd']:.2f}%
-🧪 스탁랩에서 나만의 주식 조합을 실험해 보세요!
+🧪 스톡랩에서 나만의 주식 조합을 실험해 보세요!
                     """
                     st.code(social_card, language="markdown")
 
                     st.markdown("---")
                     st.markdown("#### 📄 분석 결과 요약 리포트")
                     report_text = f"""
-### 📄 스탁랩 (StockLab) 포트폴리오 분석 보고서
+### 📄 스톡랩 (StockLab) 포트폴리오 분석 보고서
 
 **1. 선택 종목 및 비중**
 - 투자 분야: {selected_sector}
@@ -528,7 +546,7 @@ if selected_tickers:
 - 최대 하락폭 (MDD): {sum_data['mdd']:.2f}%
                     """
                     st.markdown(report_text)
-                    st.text_area("텍스트 전체 복사하기", report_text, height=180, key="ta_report_v9")
+                    st.text_area("텍스트 전체 복사하기", report_text, height=180, key="ta_report_v10")
                 else:
                     st.warning("탭 2에서 주식 비중을 먼저 설정해 주세요.")
 
@@ -540,12 +558,12 @@ if selected_tickers:
             data=csv_data, 
             file_name="stocklab_data.csv", 
             mime="text/csv",
-            key="btn_csv_download_v9"
+            key="btn_csv_download_v10"
         )
         
         st.sidebar.markdown("---")
         st.sidebar.markdown("### 🤝 서비스 / 제휴 문의")
-        st.sidebar.caption("스탁랩 개발팀 문의:")
+        st.sidebar.caption("스톡랩 개발팀 문의:")
         st.sidebar.code("contact.stocklab@gmail.com", language="text")
     else:
         st.error("선택한 주식의 데이터를 가져올 수 없습니다.")
