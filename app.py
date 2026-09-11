@@ -31,10 +31,13 @@ st.markdown("""
     .tutorial-box {
         background-color: #1E293B; border-left: 4px solid #38BDF8; padding: 14px 18px; border-radius: 4px 8px 8px 4px; margin-bottom: 20px;
     }
+    .info-card {
+        background-color: #1E293B; border: 1px solid #334155; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-# 🌐 완벽 검증 다국어 사전 (랭킹 기능 문구 포함)
+# 🌐 완벽 검증 다국어 사전 (중국 위안화 및 채권/환율 섹터 추가)
 LANG_DICT = {
     "한국어": {
         "title": "🧪 스톡랩 (StockLab)",
@@ -46,7 +49,8 @@ LANG_DICT = {
             "IT / 반도체": ["NVDA", "AAPL", "MSFT", "AVGO", "AMD", "TSM"],
             "빅테크 / 미디어": ["GOOGL", "META", "NFLX"],
             "커머스 / 모빌리티": ["AMZN", "TSLA", "NKE", "SBUX"],
-            "소비재 / 대표 ETF": ["KO", "PEP", "WMT", "SPY", "QQQ"]
+            "소비재 / 대표 ETF": ["KO", "PEP", "WMT", "SPY", "QQQ"],
+            "🛡️ 안전자산 / 채권 & 환율": ["TLT", "AGG", "UUP", "GLD"]
         },
         "ticker_title": "📌 종목 선택",
         "curr_price": "📌 실시간 종목 시세",
@@ -65,7 +69,7 @@ LANG_DICT = {
         "mc_p95": "낙관적 (상위 5%)",
         "pro_lock": "👑 Pro 전용 기능입니다. 버전 선택에서 Pro 모드로 전환하세요.",
         "tut_title": "📖 Quick 가이드",
-        "tut_body": "1️⃣ <b>종목 선택</b>: 왼쪽 섹터에서 원하는 종목을 체크하세요.<br>2️⃣ <b>비중 설정</b>: <code>🎯 포트폴리오 계산기</code>에서 비중을 입력하고 [🚀 분석 실행]을 누르세요.<br>3️⃣ <b>시뮬레이션</b>: 종목별 투자금 배분과 위험지표(변동성, 샤프지수)를 확인하세요.",
+        "tut_body": "1️⃣ <b>종목 선택</b>: 주식뿐만 아니라 미국 장기채(TLT), 달러(UUP), 금(GLD) 등도 선택할 수 있습니다.<br>2️⃣ <b>비중 설정</b>: <code>🎯 포트폴리오 계산기</code>에서 비중을 입력하고 [🚀 분석 실행]을 누르세요.<br>3️⃣ <b>쉬운 차트 보기</b>: <code>🔍 기술적 지표</code> 탭에서 주가가 이동평균선보다 위에 있는지 아래에 있는지 쉽게 확인해보세요.",
         "contact": "🤝 서비스 문의",
         "rank_empty": "🏆 아직 등록된 포트폴리오가 없습니다. 분석 실행 후 [랭킹에 내 포트폴리오 등록]을 눌러보세요!",
         "submit_rank": "🏆 내 포트폴리오 랭킹에 등록하기"
@@ -80,7 +84,8 @@ LANG_DICT = {
             "IT / Tech & Semi": ["NVDA", "AAPL", "MSFT", "AVGO", "AMD", "TSM"],
             "Big Tech / Media": ["GOOGL", "META", "NFLX"],
             "Commerce / Mobility": ["AMZN", "TSLA", "NKE", "SBUX"],
-            "Consumer / Major ETFs": ["KO", "PEP", "WMT", "SPY", "QQQ"]
+            "Consumer / Major ETFs": ["KO", "PEP", "WMT", "SPY", "QQQ"],
+            "🛡️ Safe Assets / Bonds & FX": ["TLT", "AGG", "UUP", "GLD"]
         },
         "ticker_title": "📌 Select Assets",
         "curr_price": "📌 Real-Time Market Prices",
@@ -99,7 +104,7 @@ LANG_DICT = {
         "mc_p95": "Optimistic (Best 5%)",
         "pro_lock": "👑 Pro feature only. Please switch to Pro mode in the Version menu.",
         "tut_title": "📖 Quick Start Guide",
-        "tut_body": "1️⃣ <b>Select Assets</b>: Check tickers in the sidebar.<br>2️⃣ <b>Set Weight</b>: Enter weights in Portfolio Calculator and click [🚀 Run Analytics].<br>3️⃣ <b>Simulate</b>: Check asset allocations and risk metrics (Volatility, Sharpe Ratio).",
+        "tut_body": "1️⃣ <b>Select Assets</b>: Choose stocks, long-term US bonds (TLT), USD Index (UUP), or Gold (GLD).<br>2️⃣ <b>Set Weight</b>: Enter weights in Portfolio Calculator and click [🚀 Run Analytics].<br>3️⃣ <b>Easy Charts</b>: Use technicals tab to easily see if prices are trading above moving averages.",
         "contact": "🤝 Contact Us",
         "rank_empty": "🏆 No registered portfolios yet. Be the first to register yours!",
         "submit_rank": "🏆 Submit My Portfolio to Leaderboard"
@@ -114,7 +119,8 @@ LANG_DICT = {
             "IT / 半導体": ["NVDA", "AAPL", "MSFT", "AVGO", "AMD", "TSM"],
             "ビッグテック / メディア": ["GOOGL", "META", "NFLX"],
             "コマース / モビリティ": ["AMZN", "TSLA", "NKE", "SBUX"],
-            "消費財 / 代表 ETF": ["KO", "PEP", "WMT", "SPY", "QQQ"]
+            "消費財 / 代表 ETF": ["KO", "PEP", "WMT", "SPY", "QQQ"],
+            "🛡️ 安全資産 / 債券 & 為替": ["TLT", "AGG", "UUP", "GLD"]
         },
         "ticker_title": "📌 銘柄選択",
         "curr_price": "📌 リアルタイム株価",
@@ -133,7 +139,7 @@ LANG_DICT = {
         "mc_p95": "楽観的 (上位5%)",
         "pro_lock": "👑 Pro専用機能です。バージョン選択でProモードに切り替えてください。",
         "tut_title": "📖 Quick ガイド",
-        "tut_body": "1️⃣ <b>銘柄選択</b>: サイドバーで銘柄を選択します。<br>2️⃣ <b>比率設定</b>: ポートフォリオ計算機で比率を入力し分析を実行します。<br>3️⃣ <b>シミュレーション</b>: 銘柄別投資額やリスク指標(変動性、シャープレシオ)を確認します。",
+        "tut_body": "1️⃣ <b>銘柄選択</b>: 米国株だけでなく米国債(TLT)やドル指数(UUP)、金(GLD)も選択可能です。<br>2️⃣ <b>比率設定</b>: ポートフォリオ計算機で比率を入力し分析を実行します。<br>3️⃣ <b>簡単チャート</b>: 株価が移動平均線より上か下かを簡単にチェックできます。",
         "contact": "🤝 お問い合わせ",
         "rank_empty": "🏆 登録されたポートフォリオはまだありません。最初のポートフォリオを登録してみましょう！",
         "submit_rank": "🏆 ランキングに登録する"
@@ -148,7 +154,8 @@ LANG_DICT = {
             "IT / 半导体": ["NVDA", "AAPL", "MSFT", "AVGO", "AMD", "TSM"],
             "科技巨头 / 媒体": ["GOOGL", "META", "NFLX"],
             "电商 / 出行": ["AMZN", "TSLA", "NKE", "SBUX"],
-            "消费品 / 代表 ETF": ["KO", "PEP", "WMT", "SPY", "QQQ"]
+            "消费品 / 代表 ETF": ["KO", "PEP", "WMT", "SPY", "QQQ"],
+            "🛡️ 避险资产 / 债券 & 外汇": ["TLT", "AGG", "UUP", "GLD"]
         },
         "ticker_title": "📌 选择股票",
         "curr_price": "📌 实时股票行情",
@@ -167,45 +174,51 @@ LANG_DICT = {
         "mc_p95": "乐观 (上位 5%)",
         "pro_lock": "👑 此功能仅限 Pro 用户。请在版本菜单中切换至 Pro 模式。",
         "tut_title": "📖 快速指南",
-        "tut_body": "1️⃣ <b>选择股票</b>: 在侧边栏勾选股票。<br>2️⃣ <b>设置权重</b>: 输入比重并点击开始分析。<br>3️⃣ <b>模拟</b>: 查看各股票分配及风险指标（波动率、夏普比率）。",
+        "tut_body": "1️⃣ <b>选择资产</b>: 除股票外，还可选择美国长期国债 (TLT)、美元指数 (UUP) 和黄金 (GLD)。<br>2️⃣ <b>设置权重</b>: 输入比重并点击开始分析。<br>3️⃣ <b>简单图表</b>: 轻松查看股价是否高于移动平均线。",
         "contact": "🤝 联系我们",
         "rank_empty": "🏆 暂无已注册的投资组合。快来提交您的第一个组合吧！",
         "submit_rank": "🏆 提交组合至排行榜"
     }
 }
 
-# 🌐 종목명 표기 규칙 (일본어/영문 시 글로벌 직관성 유지)
+# 🌐 채권/환율 자산 신규 매핑
 TICKER_TRANSLATIONS = {
     "한국어": {
         "NVDA": "엔비디아", "AAPL": "애플", "MSFT": "마이크로소프트", "AVGO": "브로드컴", "AMD": "AMD", "TSM": "TSMC",
         "GOOGL": "알파벳/구글", "META": "메타", "NFLX": "넷플릭스", "AMZN": "아마존", "TSLA": "테슬라", "NKE": "나이키",
-        "SBUX": "스타벅스", "KO": "코카콜라", "PEP": "펩시코", "WMT": "월마트", "SPY": "S&P 500 ETF", "QQQ": "나스닥 100 ETF"
+        "SBUX": "스타벅스", "KO": "코카콜라", "PEP": "펩시코", "WMT": "월마트", "SPY": "S&P 500 ETF", "QQQ": "나스닥 100 ETF",
+        "TLT": "미국 20년+ 국채 ETF", "AGG": "미국 종합채권 ETF", "UUP": "달러 인덱스 ETF", "GLD": "금(Gold) ETF"
     },
     "English": {
         "NVDA": "NVIDIA", "AAPL": "Apple", "MSFT": "Microsoft", "AVGO": "Broadcom", "AMD": "AMD", "TSM": "TSMC",
         "GOOGL": "Alphabet", "META": "Meta", "NFLX": "Netflix", "AMZN": "Amazon", "TSLA": "Tesla", "NKE": "Nike",
-        "SBUX": "Starbucks", "KO": "Coca-Cola", "PEP": "PepsiCo", "WMT": "Walmart", "SPY": "S&P 500 ETF", "QQQ": "Nasdaq 100 ETF"
+        "SBUX": "Starbucks", "KO": "Coca-Cola", "PEP": "PepsiCo", "WMT": "Walmart", "SPY": "S&P 500 ETF", "QQQ": "Nasdaq 100 ETF",
+        "TLT": "iShares 20+ Year Treasury Bond ETF", "AGG": "iShares Core U.S. Aggregate Bond ETF", "UUP": "Invesco DB US Dollar Index ETF", "GLD": "SPDR Gold Shares ETF"
     },
     "日本語": {
         "NVDA": "NVIDIA", "AAPL": "Apple", "MSFT": "Microsoft", "AVGO": "Broadcom", "AMD": "AMD", "TSM": "TSMC",
         "GOOGL": "Alphabet", "META": "Meta", "NFLX": "Netflix", "AMZN": "Amazon", "TSLA": "Tesla", "NKE": "Nike",
-        "SBUX": "Starbucks", "KO": "Coca-Cola", "PEP": "PepsiCo", "WMT": "Walmart", "SPY": "S&P 500 ETF", "QQQ": "Nasdaq 100 ETF"
+        "SBUX": "Starbucks", "KO": "Coca-Cola", "PEP": "PepsiCo", "WMT": "Walmart", "SPY": "S&P 500 ETF", "QQQ": "Nasdaq 100 ETF",
+        "TLT": "米国株20年超国債ETF", "AGG": "米国総合債券ETF", "UUP": "米ドル指数ETF", "GLD": "金(Gold) ETF"
     },
     "中文": {
         "NVDA": "英伟达", "AAPL": "苹果", "MSFT": "微软", "AVGO": "博通", "AMD": "AMD", "TSM": "台积电",
         "GOOGL": "谷歌", "META": "Meta", "NFLX": "网飞", "AMZN": "亚马逊", "TSLA": "特斯拉", "NKE": "耐克",
-        "SBUX": "星巴克", "KO": "可口可乐", "PEP": "百事可乐", "WMT": "沃尔玛", "SPY": "标普 500 ETF", "QQQ": "纳斯达克 100 ETF"
+        "SBUX": "星巴克", "KO": "可口可乐", "PEP": "百事可乐", "WMT": "沃尔玛", "SPY": "标普 500 ETF", "QQQ": "纳斯达克 100 ETF",
+        "TLT": "美国20年+国债ETF", "AGG": "美国综合债券ETF", "UUP": "美元指数ETF", "GLD": "黄金ETF"
     }
 }
 
+# 🔀 중국 위안화(CNY) 환율 데이터 수집 반영
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_exchange_rates():
     try:
         krw = yf.Ticker("KRW=X").history(period="1d")['Close'].iloc[-1]
         jpy = yf.Ticker("JPY=X").history(period="1d")['Close'].iloc[-1]
-        return {"USD": (1.0, "$"), "KRW": (krw, "₩"), "JPY": (jpy, "¥")}
+        cny = yf.Ticker("CNY=X").history(period="1d")['Close'].iloc[-1]
+        return {"USD": (1.0, "$"), "KRW": (krw, "₩"), "JPY": (jpy, "¥"), "CNY": (cny, "¥")}
     except Exception:
-        return {"USD": (1.0, "$"), "KRW": (1350.0, "₩"), "JPY": (150.0, "¥")}
+        return {"USD": (1.0, "$"), "KRW": (1350.0, "₩"), "JPY": (150.0, "¥"), "CNY": (7.2, "¥")}
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def fetch_stock_data(tickers, start, end):
@@ -225,7 +238,8 @@ L = LANG_DICT[selected_lang]
 
 rates = get_exchange_rates()
 st.sidebar.markdown(f"### {L['currency_select']}")
-curr_choice = st.sidebar.selectbox("Currency", ["USD ($)", "KRW (₩)", "JPY (¥)"], index=0, label_visibility="collapsed")
+# 통화 셀렉트박스에 중국 위안화(CNY) 추가
+curr_choice = st.sidebar.selectbox("Currency", ["USD ($)", "KRW (₩)", "JPY (¥)", "CNY (¥)"], index=0, label_visibility="collapsed")
 curr_key = curr_choice.split(" ")[0]
 fx_rate, curr_symbol = rates[curr_key]
 
@@ -361,7 +375,7 @@ if selected_tickers:
                     'port_daily_ret': port_daily_ret
                 }
 
-        # TAB 3: 종합 자산 & 리스크 시뮬레이션 (피드백 반영)
+        # TAB 3: 종합 자산 & 리스크 시뮬레이션
         with tab3:
             if not is_pro:
                 st.warning(L["pro_lock"])
@@ -375,7 +389,6 @@ if selected_tickers:
                     with col_mc2:
                         sim_runs = st.selectbox(L["sim_runs"], [1000, 5000, 10000], index=0)
 
-                    # 1. 종목별 투자금 배분표 표시
                     st.markdown("##### 📌 포트폴리오 종목별 예상 투자금 배분")
                     alloc_cols = st.columns(min(len(sum_data['valid_tickers']), 4))
                     for idx, (t, w) in enumerate(zip(sum_data['valid_tickers'], sum_data['weights'])):
@@ -385,7 +398,6 @@ if selected_tickers:
 
                     st.markdown("---")
 
-                    # 2. Monte Carlo Simulation
                     port_daily_ret = sum_data['port_daily_ret']
                     T = 252 
                     sim_results = np.zeros((T, sim_runs))
@@ -415,20 +427,36 @@ if selected_tickers:
                     m2.metric(L["mc_p50"], f"{curr_symbol}{p50:,.0f}", delta=f"{((p50-user_budget)/user_budget)*100:.1f}%")
                     m3.metric(L["mc_p95"], f"{curr_symbol}{p95:,.0f}", delta=f"{((p95-user_budget)/user_budget)*100:.1f}%")
 
-                    # 3. 추가 정밀 리스크 지표
                     ann_vol = std_d * np.sqrt(252) * 100
                     sharpe = (mean_d * 252) / (std_d * np.sqrt(252)) if std_d != 0 else 0
                     st.info(f"💡 **포트폴리오 정밀 지표**: 연율화 변동성 `{ann_vol:.2f}%` | 샤프 지수(Sharpe Ratio) `{sharpe:.2f}`")
                 else:
                     st.info("Tab 2에서 [🚀 분석 실행]을 먼저 클릭하세요.")
 
-        # TAB 4: Technicals
+        # TAB 4: Technicals (초보자 쉬운 가이드 설명 추가)
         with tab4:
-            selected_ticker = st.selectbox("Ticker", options=valid_tickers, format_func=lambda x: get_disp_name(x, selected_lang), index=0)
+            st.markdown("""
+            <div class="info-card">
+                <b>💡 기술적 지표란 무엇인가요?</b><br>
+                주가의 지나간 움직임을 바탕으로 <b>"지금 살 때인가, 팔 때인가?"</b>를 쉽게 알아볼 수 있게 도와주는 지표입니다.<br>
+                • <b>실선(현재 주가)</b>이 <b>주황색 선(MA 50 - 50일 평균값)</b>보다 위에 있으면: 최근 상승 추세! 📈<br>
+                • <b>실선</b>이 <b>주황색 선</b> 아래로 떨어지면: 최근 조정 또는 하락 추세! 📉
+            </div>
+            """, unsafe_allow_html=True)
+
+            selected_ticker = st.selectbox("종목 선택", options=valid_tickers, format_func=lambda x: get_disp_name(x, selected_lang), index=0)
             stock_series = valid_data[selected_ticker] * fx_rate
+            ma50 = stock_series.rolling(50).mean()
+
+            curr_val = stock_series.iloc[-1]
+            curr_ma = ma50.iloc[-1]
+            status_text = "🟢 상승 추세 (50일 평균선 위)" if curr_val >= curr_ma else "🔴 하락/조정 추세 (50일 평균선 아래)"
+
+            st.caption(f"📌 현재 **{get_disp_name(selected_ticker, selected_lang)}** 진단: **{status_text}**")
+
             fig_detail = go.Figure()
-            fig_detail.add_trace(go.Scatter(x=stock_series.index, y=stock_series, mode='lines', name='Price', line=dict(color='#38BDF8')))
-            fig_detail.add_trace(go.Scatter(x=stock_series.index, y=stock_series.rolling(50).mean(), mode='lines', name='MA 50'))
+            fig_detail.add_trace(go.Scatter(x=stock_series.index, y=stock_series, mode='lines', name='현재 주가', line=dict(color='#38BDF8', width=2)))
+            fig_detail.add_trace(go.Scatter(x=stock_series.index, y=ma50, mode='lines', name='50일 이동평균선(MA 50)', line=dict(color='#F59E0B', dash='dash')))
             update_chart_layout(fig_detail)
             st.plotly_chart(fig_detail, use_container_width=True)
 
@@ -444,7 +472,7 @@ if selected_tickers:
             update_chart_layout(fig_corr)
             st.plotly_chart(fig_corr, use_container_width=True)
 
-        # TAB 6: Leaderboard (유저 제출 방식 적용)
+        # TAB 6: Leaderboard
         with tab6:
             if 'rankings' not in st.session_state:
                 st.session_state['rankings'] = []
