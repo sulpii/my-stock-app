@@ -15,17 +15,34 @@ st.title("📈 Wharton Investment Competition & Stock Analysis Dashboard")
 st.caption("Wharton Global High School Investment Competition - Comprehensive Portfolio Strategy Tool")
 st.markdown("---")
 
-# 3. 사이드바 입력
-st.sidebar.header("⚙️ 분석 설정")
-default_tickers = "AAPL TSLA SPY TLT GLD"
-tickers_input = st.sidebar.text_input("분석할 종목 코드를 입력하세요 (공백 구분)", default_tickers)
+# 3. 사이드바 프리셋 종목 설정 (카테고리별 구성)
+st.sidebar.header("⚙️ 분석 종목 및 기간 선택")
+
+TICKER_DICTIONARY = {
+    "🇺🇸 미국 대표 빅테크": ["AAPL", "NVDA", "MSFT", "GOOGL", "AMZN", "META", "TSLA"],
+    "📊 주요 지수 및 채권 ETF": ["SPY", "QQQ", "TLT", "IEF", "AGG"],
+    "🪙 원자재 및 원자재 ETF": ["GLD", "SLV", "USO"],
+    "🚀 주요 배당 및 글로벌 ETF": ["SCHD", "VT", "EEM"]
+}
+
+# 기본 선택 종목 지정
+default_selection = ["AAPL", "NVDA", "TSLA", "SPY", "TLT", "GLD"]
+
+# 사이드바 다중 선택 기능 (Multiselect)
+all_tickers_flat = [ticker for group in TICKER_DICTIONARY.values() for ticker in group]
+selected_tickers = st.sidebar.multiselect(
+    "분석할 종목을 선택하거나 검색하세요 (직접 입력 가능)",
+    options=sorted(list(set(all_tickers_flat))),
+    default=default_selection
+)
+
 start_date = st.sidebar.date_input("시작일", pd.to_datetime("2023-01-01"))
 end_date = st.sidebar.date_input("종료일", pd.to_datetime("today"))
 
-ticker_list = [t.strip().upper() for t in tickers_input.split() if t.strip()]
+ticker_list = [t.strip().upper() for t in selected_tickers if t.strip()]
 
 if ticker_list:
-    with st.spinner('금융 및 거래 데이터를 불러오는 중입니다...'):
+    with st.spinner('금융 데이터 및 주가를 불러오는 중입니다...'):
         try:
             raw_data = yf.download(ticker_list, start=start_date, end=end_date)
             if 'Close' in raw_data:
@@ -46,8 +63,8 @@ if ticker_list:
     if valid_tickers:
         valid_data = data[valid_tickers].dropna()
 
-        # 4. 상단 카드 (주요 실시간 시세)
-        st.subheader("📌 주요 자산 최신 현황")
+        # 4. 상단 카드 (선택한 종목 최신 시세)
+        st.subheader("📌 선택 종목 최신 시세 및 변동률")
         grid_cols = st.columns(min(len(valid_tickers), 5))
         for idx, ticker in enumerate(valid_tickers):
             col_target = grid_cols[idx % 5]
@@ -71,8 +88,8 @@ if ticker_list:
 
         # TAB 1: 상대 수익률 비교
         with tab1:
-            st.markdown("### 📈 시작 시점(100 기준) 성과 비교")
-            st.caption("모든 종목의 시작가를 100으로 기준화하여 상대적 성과를 분석합니다.")
+            st.markdown("### 📈 시작 시점(100 기준) 상대 수익률 비교")
+            st.caption("선택한 종목들의 시작가를 100으로 설정하여 어떤 자산이 더 높은 수익을 올렸는지 직관적으로 비교합니다.")
             norm_data = (valid_data / valid_data.iloc[0]) * 100
             st.line_chart(norm_data, use_container_width=True)
 
