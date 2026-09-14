@@ -13,13 +13,23 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS (사이드바 너비 줄이기 및 다크 핀테크 스타일)
+# Custom CSS (사이드바 토글 버튼 살리기 & Metric 폰트 크기 조절)
 st.markdown("""
     <style>
-    /* 왼쪽 사이드바 너비 축소 (기본값 ~336px -> 260px) */
-    [data-testid="stSidebar"] {
-        min-width: 260px !important;
-        max-width: 260px !important;
+    /* 1. 사이드바 여닫기(토글) 기능 유지하면서 너비 줄이기 */
+    section[data-testid="stSidebar"] {
+        width: 260px !important;
+    }
+    
+    /* 2. 모의투자 잔고 Metric 폰트 조정 (잘림 현상 해결) */
+    [data-testid="stMetricValue"] {
+        font-size: 1.4rem !important; /* 폰트 크기를 줄여 1억 이상 금액도 ... 표시 없이 출력 */
+        font-weight: 700 !important;
+        white-space: nowrap !important;
+    }
+    [data-testid="stMetricLabel"] {
+        font-size: 0.85rem !important;
+        color: #94A3B8 !important;
     }
     
     .stApp { background-color: #0B0E14; color: #E2E8F0; font-family: 'Pretendard', sans-serif; }
@@ -94,7 +104,7 @@ def fetch_single_ticker_data(ticker, start, end):
         return None
 
 # 세션 초기화 (기본 자산 1억 원 설정)
-INIT_CASH = 100000000.0  # 1억 원
+INIT_CASH = 100000000.0
 
 if 'cash' not in st.session_state:
     st.session_state['cash'] = INIT_CASH
@@ -103,7 +113,7 @@ if 'portfolio' not in st.session_state:
 if 'search_ticker' not in st.session_state:
     st.session_state['search_ticker'] = "AAPL"
 
-# 사이드바 설정 (너비가 줄어들어 훨씬 컴팩트해집니다)
+# 사이드바 설정
 st.sidebar.markdown("### ⚙️ Settings")
 selected_lang = st.sidebar.selectbox("Language", ["한국어", "English"], index=0)
 L = LANG_DICT.get(selected_lang, LANG_DICT["한국어"])
@@ -169,7 +179,7 @@ c_krw = rates["KRW"][0]
 disp_scale = (fx_rate / c_krw) if curr_key != "KRW" else 1.0
 
 # ----------------------------------------------------
-# TAB 1: 모의투자 및 보유 자산 (기본 자산 1억 적용)
+# TAB 1: 모의투자 및 보유 자산
 # ----------------------------------------------------
 with tab1:
     st.markdown(f'<div class="guide-box">{p_icon("💡")}<b>가상 모의투자</b>: 초기 자산 1억 원으로 자유롭게 주식을 매수/매도해보세요.</div>', unsafe_allow_html=True)
@@ -202,7 +212,8 @@ with tab1:
 
     total_asset_krw = st.session_state['cash'] + eval_stock_val
     
-    k1, k2, k3, k4 = st.columns([1.2, 1.2, 1.2, 0.8])
+    # 상단 요약 지표 영역 (너비 비율 및 Metric 스타일 조정 적용)
+    k1, k2, k3, k4 = st.columns([1.3, 1.3, 1.3, 0.9])
     k1.metric(f"{p_icon('💰')}총 자산", f"{curr_symbol}{total_asset_krw * disp_scale:,.0f}")
     k2.metric(f"{p_icon('💳')}보유 현금", f"{curr_symbol}{st.session_state['cash'] * disp_scale:,.0f}")
     k3.metric(f"{p_icon('🏢')}주식 평가액", f"{curr_symbol}{eval_stock_val * disp_scale:,.0f}")
@@ -330,7 +341,6 @@ with tab3:
         )
         st.plotly_chart(fig_candle, use_container_width=True)
 
-# TAB 4 & TAB 5 생략 없이 동일하게 유지
 with tab4:
     st.markdown(f'<div class="guide-box">{p_icon("💡")}<b>퀀트 리스크 분석</b>: 위험 대비 수익성을 정밀하게 분석합니다.</div>', unsafe_allow_html=True)
 
