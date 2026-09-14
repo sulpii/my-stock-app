@@ -3,6 +3,7 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+import plotly.express as px
 from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
 
@@ -13,7 +14,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS (사이드바 토글 버튼 살리기 & Metric 폰트 크기 조절)
+# Custom CSS (사이드바 토글 버튼 유지 & Metric 폰트 잘림 방지)
 st.markdown("""
     <style>
     /* 1. 사이드바 여닫기(토글) 기능 유지하면서 너비 줄이기 */
@@ -146,7 +147,7 @@ with col_s2:
 
 current_ticker = st.session_state['search_ticker']
 
-# 데이터 로딩
+# 데이터 로딩 (최근 1년치 데이터)
 today = datetime.today()
 start_date = today - timedelta(days=365)
 
@@ -212,7 +213,6 @@ with tab1:
 
     total_asset_krw = st.session_state['cash'] + eval_stock_val
     
-    # 상단 요약 지표 영역 (너비 비율 및 Metric 스타일 조정 적용)
     k1, k2, k3, k4 = st.columns([1.3, 1.3, 1.3, 0.9])
     k1.metric(f"{p_icon('💰')}총 자산", f"{curr_symbol}{total_asset_krw * disp_scale:,.0f}")
     k2.metric(f"{p_icon('💳')}보유 현금", f"{curr_symbol}{st.session_state['cash'] * disp_scale:,.0f}")
@@ -341,9 +341,83 @@ with tab3:
         )
         st.plotly_chart(fig_candle, use_container_width=True)
 
+# ----------------------------------------------------
+# TAB 4: 퀀트 & 리스크 분석 (구현 완료!)
+# ----------------------------------------------------
 with tab4:
-    st.markdown(f'<div class="guide-box">{p_icon("💡")}<b>퀀트 리스크 분석</b>: 위험 대비 수익성을 정밀하게 분석합니다.</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="guide-box">{p_icon("💡")}<b>퀀트 리스크 분석</b>: 최근 1년 데이터를 기반으로 <b>{current_ticker}</b> 종목의 변동성, 샤프 지수, 최대 낙폭(MDD)을 측정합니다.</div>', unsafe_allow_html=True)
+    
+    if ticker_df is not None and not ticker_df.empty and len(ticker_df) > 20:
+        df_risk = ticker_df.copy()
+        
+        # 1. 일간 수익률 및 리스크 지표 계산
+        df_risk['Daily_Return'] = df_risk['Close'].pct_change()
+        
+        # 연간화 지표 (252 영업일 기준)
+        annual_return = df_risk['Daily_Return'].mean() * 252 * 100
+        annual_volatility = df_risk['Daily_Return'].std() * np.sqrt(252) * 100
+        risk_free_rate = 3.5  # 무위험 수익률 3.5% 가정
+        sharpe_ratio = (annual_return - risk_free_rate) / annual_volatility if annual_volatility != 0 else 0
+        
+        # MDD(최대 낙폭) 계산
+        df_risk['Cum_Max'] = df_risk['Close'].cummax()
+        df_risk['Drawdown'] = (df_risk['Close'] - df_risk['Cum_Max']) / df_risk['Cum_Max'] * 100
+        mdd = df_risk['Drawdown'].min()
+        
+        # 지표 출력 (4개 컬럼)
+        r1, r2, r3, r4 = st.columns(4)
+        r1.metric("📈 연간 예상 수익률", f"{annual_return:+.2f}%")
+        r2.metric("⚡ 연간 변동성 (위험도)", f"{annual_volatility:.2f}%")
+        r3.metric("🎯 샤프 지수 (위험 대비 수익)", f"{sharpe_ratio:.2f}")
+        r4.metric("📉 최대 낙폭 (MDD)", f"{mdd:.2f}%")
+        
+        st.markdown("---")
+        
+        # 2. 리스크 차트 (낙폭 차트 & 수익률 분포)
+        col_mdd, col_dist = st.columns([1, 1])
+        
+        with col_mdd:
+            st.markdown("##### 📉 고점 대비 낙폭(Drawdown) 추이")
+            fig_dd = go.Figure()
+            fig_dd.add_trace(go.Scatter(
+                x=df_risk.index, y=df_risk['Drawdown'],
+                fill='tozeroy', fillcolor='rgba(239, 68, 68, 0.3)',
+                line=dict(color='#EF4444', width=1.5), name="낙폭 (%)"
+            ))
+            fig_dd.update_layout(
+                template="plotly_dark",
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                height=280,
+                margin=dict(l=10, r=10, t=20, b=10),
+                yaxis=dict(title="낙폭 (%)", suffix="%")
+            )
+            st.plotly_chart(fig_dd, use_container_width=True)
+            
+        with col_dist:
+            st.markdown("##### 📊 일간 수익률 분포 (변동성 분석)")
+            fig_dist = px.histogram(
+                df_risk.dropna(), x="Daily_Return", nbins=40,
+                color_discrete_sequence=['#38BDF8']
+            )
+            fig_dist.update_layout(
+                template="plotly_dark",
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                height=280,
+                margin=dict(l=10, r=10, t=20, b=10),
+                xaxis=dict(title="일간 수익률", tickformat=".1%"),
+                yaxis=dict(title="빈도수"),
+                showlegend=False
+            )
+            st.plotly_chart(fig_dist, use_container_width=True)
+            
+    else:
+        st.warning("리스크 분석을 수행하기 위한 ausreichend 데이터가 부족합니다.")
 
+# ----------------------------------------------------
+# TAB 5: 프로 진단 보고서
+# ----------------------------------------------------
 with tab5:
     if not is_pro:
         st.markdown('<div class="pro-report-card" style="border-color: #6366F1;"><h3 style="color: #6366F1; margin-top:0;">👑 Pro 모드 안내</h3><p style="color: #CBD5E1;">Pro 모드로 전환하면 AI 포트폴리오 진단 리포트를 받아보실 수 있습니다.</p></div>', unsafe_allow_html=True)
