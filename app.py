@@ -13,7 +13,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS (모던 핀테크 다크 스타일 & 픽토그램 제거)
+# Custom CSS (모던 핀테크 다크 스타일)
 st.markdown("""
     <style>
     .stApp { background-color: #0B0E14; color: #E2E8F0; font-family: 'Pretendard', sans-serif; }
@@ -22,6 +22,10 @@ st.markdown("""
     .version-tag {
         background-color: #1E293B; color: #38BDF8; padding: 4px 10px;
         border-radius: 6px; font-size: 0.8rem; font-weight: 700; border: 1px solid #334155;
+    }
+    .pro-tag {
+        background: linear-gradient(135deg, #6366F1 0%, #A855F7 100%);
+        color: #FFFFFF; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 700;
     }
     .guide-box {
         background-color: #1E293B; border-left: 4px solid #38BDF8; padding: 12px 16px;
@@ -48,8 +52,7 @@ LANG_DICT = {
         "tab_risk": "퀀트 & 리스크 분석",
         "tab_pro": "프로 진단 보고서",
         "buy_btn": "매수하기",
-        "sell_btn": "매도하기",
-        "pro_lock": "Pro 전용 기능입니다. 왼쪽 사이드바에서 Pro 모드로 전환해주세요."
+        "sell_btn": "매도하기"
     },
     "English": {
         "title": "StockLab",
@@ -63,8 +66,7 @@ LANG_DICT = {
         "tab_risk": "Quant & Risk Analysis",
         "tab_pro": "Pro Report",
         "buy_btn": "Buy",
-        "sell_btn": "Sell",
-        "pro_lock": "Pro feature only. Switch to Pro mode in the sidebar."
+        "sell_btn": "Sell"
     },
     "日本語": {
         "title": "StockLab",
@@ -78,8 +80,7 @@ LANG_DICT = {
         "tab_risk": "クオンツ＆リスク分析",
         "tab_pro": "Pro 診断レポート",
         "buy_btn": "買い",
-        "sell_btn": "売り",
-        "pro_lock": "Pro専用機能です。Proモードに切り替えてください。"
+        "sell_btn": "売り"
     },
     "中文": {
         "title": "StockLab",
@@ -93,12 +94,10 @@ LANG_DICT = {
         "tab_risk": "量化与风险分析",
         "tab_pro": "Pro 诊断报告",
         "buy_btn": "买入",
-        "sell_btn": "卖出",
-        "pro_lock": "此功能仅限 Pro 用户。请切换至 Pro 模式。"
+        "sell_btn": "卖出"
     }
 }
 
-# 시장별 데이터
 STOCKS = {
     "미국 주식 (US Market)": {
         "Apple": "AAPL", "NVIDIA": "NVDA", "Microsoft": "MSFT", 
@@ -136,11 +135,10 @@ def fetch_stock_data(tickers, start, end):
     except Exception:
         return pd.DataFrame()
 
-# 모의투자 잔고 및 매수평단가 세션 관리
+# 세션 초기화
 if 'cash' not in st.session_state:
-    st.session_state['cash'] = 10000000.0  # 기본 1,000만 원 (KRW 기준)
+    st.session_state['cash'] = 10000000.0
 if 'portfolio' not in st.session_state:
-    # {ticker: {'qty': 수량, 'avg_price': 평균단가(원화)}}
     st.session_state['portfolio'] = {}
 
 # 사이드바 설정
@@ -160,6 +158,10 @@ st.sidebar.markdown("---")
 mode_choice = st.sidebar.selectbox(L['ver_select'], ["Free (기본 모드)", "Pro (전문가 모드)"], index=1)
 is_pro = "Pro" in mode_choice
 
+# Pro 모드 픽토그램/아이콘 헬퍼 함수
+def p_icon(icon_str):
+    return f"{icon_str} " if is_pro else ""
+
 # 종목 리스트 구성
 if market_choice == "미국 주식 (US Market)":
     target_stocks = STOCKS["미국 주식 (US Market)"]
@@ -176,11 +178,13 @@ def get_disp_name(name, symbol):
 # Header
 col_h1, col_h2 = st.columns([4, 1])
 with col_h1:
-    st.markdown(f'<p class="main-header">{L["title"]}</p>', unsafe_allow_html=True)
+    st.markdown(f'<p class="main-header">{p_icon("🧪")}{L["title"]}</p>', unsafe_allow_html=True)
     st.markdown(f'<p class="sub-header">{L["subtitle"]}</p>', unsafe_allow_html=True)
 with col_h2:
-    tag_name = "Pro Version" if is_pro else "Free Version"
-    st.markdown(f'<div style="text-align:right; margin-top:10px;"><span class="version-tag">{tag_name}</span></div>', unsafe_allow_html=True)
+    if is_pro:
+        st.markdown('<div style="text-align:right; margin-top:10px;"><span class="pro-tag">👑 Pro Version</span></div>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div style="text-align:right; margin-top:10px;"><span class="version-tag">Free Version</span></div>', unsafe_allow_html=True)
 
 # 데이터 로딩
 today = datetime.today()
@@ -203,17 +207,24 @@ def update_chart_layout(fig):
 if not data.empty:
     valid_tickers = [t for t in tickers if t in data.columns and not data[t].dropna().empty]
     
+    # 탭 이름에 Pro 모드에서만 픽토그램 추가
+    tab_sim_title = f"{p_icon('💵')}{L['tab_sim']}"
+    tab_calc_title = f"{p_icon('🧮')}{L['tab_calc']}"
+    tab_tech_title = f"{p_icon('📈')}{L['tab_tech']}"
+    tab_risk_title = f"{p_icon('📊')}{L['tab_risk']}"
+    tab_pro_title = f"{p_icon('👑')}{L['tab_pro']}"
+
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        L["tab_sim"], L["tab_calc"], L["tab_tech"], L["tab_risk"], L["tab_pro"]
+        tab_sim_title, tab_calc_title, tab_tech_title, tab_risk_title, tab_pro_title
     ])
 
     # ----------------------------------------------------
     # TAB 1: 모의투자 및 내 보유 자산
     # ----------------------------------------------------
     with tab1:
-        st.markdown('<div class="guide-box">💡 <b>가상 모의투자</b>: 부담 없이 실시간 시세로 매수/매도하고, 내 잔고와 평가 손익을 실시간으로 확인해보세요.</div>', unsafe_allow_html=True)
+        guide_icon = p_icon('💡')
+        st.markdown(f'<div class="guide-box">{guide_icon}<b>가상 모의투자</b>: 부담 없이 실시간 시세로 매수/매도하고, 내 잔고와 평가 손익을 실시간으로 확인해보세요.</div>', unsafe_allow_html=True)
         
-        # 보유 자산 요약 KPI
         c_krw = rates["KRW"][0]
         disp_scale = (fx_rate / c_krw) if curr_key != "KRW" else 1.0
         
@@ -246,16 +257,15 @@ if not data.empty:
         total_asset_krw = st.session_state['cash'] + eval_stock_val
         
         k1, k2, k3 = st.columns(3)
-        k1.metric("총 보유 자산", f"{curr_symbol}{total_asset_krw * disp_scale:,.0f}")
-        k2.metric("보유 현금", f"{curr_symbol}{st.session_state['cash'] * disp_scale:,.0f}")
-        k3.metric("주식 평가금액", f"{curr_symbol}{eval_stock_val * disp_scale:,.0f}")
+        k1.metric(f"{p_icon('💰')}총 보유 자산", f"{curr_symbol}{total_asset_krw * disp_scale:,.0f}")
+        k2.metric(f"{p_icon('💳')}보유 현금", f"{curr_symbol}{st.session_state['cash'] * disp_scale:,.0f}")
+        k3.metric(f"{p_icon('🏢')}주식 평가금액", f"{curr_symbol}{eval_stock_val * disp_scale:,.0f}")
 
         st.markdown("---")
         
-        # 매수/매도 섹션
         col_trade, col_hold = st.columns([1, 1])
         with col_trade:
-            st.markdown("##### 🛒 주식 주문하기")
+            st.markdown(f"##### {p_icon('🛒')}주식 주문하기")
             selected_disp = st.selectbox("거래할 종목 선택", list(target_stocks.keys()), format_func=lambda x: get_disp_name(x, target_stocks[x]))
             sel_symbol = target_stocks[selected_disp]
             
@@ -266,7 +276,7 @@ if not data.empty:
                 tb1, tb2 = st.columns(2)
                 with tb1:
                     buy_qty = st.number_input("매수 수량", min_value=1, value=1, key="b_q")
-                    if st.button(L["buy_btn"], use_container_width=True):
+                    if st.button(f"{p_icon('🟢')}{L['buy_btn']}", use_container_width=True):
                         cost = p_krw * buy_qty
                         if st.session_state['cash'] >= cost:
                             st.session_state['cash'] -= cost
@@ -281,7 +291,7 @@ if not data.empty:
                 
                 with tb2:
                     sell_qty = st.number_input("매도 수량", min_value=1, value=1, key="s_q")
-                    if st.button(L["sell_btn"], use_container_width=True):
+                    if st.button(f"{p_icon('🔴')}{L['sell_btn']}", use_container_width=True):
                         old_info = st.session_state['portfolio'].get(sel_symbol, {'qty': 0, 'avg_price': 0})
                         if old_info['qty'] >= sell_qty:
                             st.session_state['cash'] += p_krw * sell_qty
@@ -293,7 +303,7 @@ if not data.empty:
                             st.error("보유 수량이 부족합니다.")
 
         with col_hold:
-            st.markdown("##### 📋 내 보유 종목 내역")
+            st.markdown(f"##### {p_icon('📋')}내 보유 종목 내역")
             if portfolio_rows:
                 st.dataframe(pd.DataFrame(portfolio_rows), use_container_width=True, hide_index=True)
             else:
@@ -303,7 +313,7 @@ if not data.empty:
     # TAB 2: 포트폴리오 계산기
     # ----------------------------------------------------
     with tab2:
-        st.markdown('<div class="guide-box">💡 <b>포트폴리오 리밸런싱 시뮬레이션</b>: 종목별 투자 비중을 조절하여 기대 수익률 및 자산 합산을 확인해보세요.</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="guide-box">{p_icon("💡")}<b>포트폴리오 리밸런싱 시뮬레이션</b>: 종목별 투자 비중을 조절하여 기대 수익률 및 자산 합산을 확인해보세요.</div>', unsafe_allow_html=True)
         
         calc_tickers = valid_tickers[:4]
         weights = []
@@ -329,10 +339,10 @@ if not data.empty:
             st.session_state['port_res'] = {'tot_ret': port_cum.iloc[-1] - 100, 'daily_ret': port_ret}
 
     # ----------------------------------------------------
-    # TAB 3: 상세 기술적 분석 & 뉴스 (복원 및 초보자 가이드 강화)
+    # TAB 3: 상세 기술적 분석 & 뉴스
     # ----------------------------------------------------
     with tab3:
-        st.markdown('<div class="guide-box">💡 <b>기술적 지표 & 차트 분석</b>: 주가의 이동평균선, RSI, 볼린저 밴드, MACD 지표를 차트로 정밀하게 분석합니다.</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="guide-box">{p_icon("💡")}<b>기술적 지표 & 차트 분석</b>: 주가의 이동평균선, RSI, 볼린저 밴드, MACD 지표를 차트로 정밀하게 분석합니다.</div>', unsafe_allow_html=True)
         
         sel_name = st.selectbox("분석할 종목 선택", list(target_stocks.keys()), format_func=lambda x: get_disp_name(x, target_stocks[x]), key="tech_sel")
         sel_t = target_stocks[sel_name]
@@ -341,23 +351,19 @@ if not data.empty:
             df_t = pd.DataFrame(data[sel_t].dropna())
             df_t.columns = ['Close']
             
-            # 지표 계산
             df_t['MA20'] = df_t['Close'].rolling(20).mean()
             df_t['MA60'] = df_t['Close'].rolling(60).mean()
             
-            # RSI
             delta = df_t['Close'].diff()
             gain = (delta.where(delta > 0, 0)).rolling(14).mean()
             loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
             rs = gain / loss
             df_t['RSI'] = 100 - (100 / (1 + rs))
             
-            # 볼린저 밴드
             std = df_t['Close'].rolling(20).std()
             df_t['Upper'] = df_t['MA20'] + (std * 2)
             df_t['Lower'] = df_t['MA20'] - (std * 2)
 
-            # 차트 출력
             fig_tech = go.Figure()
             fig_tech.add_trace(go.Scatter(x=df_t.index, y=df_t['Close']*fx_rate, name="주가", line=dict(color='#38BDF8', width=2)))
             fig_tech.add_trace(go.Scatter(x=df_t.index, y=df_t['MA20']*fx_rate, name="20일 이평선", line=dict(color='#F59E0B')))
@@ -366,18 +372,16 @@ if not data.empty:
             update_chart_layout(fig_tech)
             st.plotly_chart(fig_tech, use_container_width=True)
 
-            # 초보자 지표 해설
             curr_rsi = df_t['RSI'].iloc[-1]
-            rsi_status = "🟢 과매도 (매수 우위 가능성)" if curr_rsi < 30 else ("🔴 과매수 (매도 주의)" if curr_rsi > 70 else "🟡 중립")
+            rsi_status = f"{p_icon('🟢')}과매도 (매수 우위 가능성)" if curr_rsi < 30 else (f"{p_icon('🔴')}과매수 (매도 주의)" if curr_rsi > 70 else f"{p_icon('🟡')}중립")
             
-            st.markdown("##### 📌 지표 진단 요약")
+            st.markdown(f"##### {p_icon('📌')}지표 진단 요약")
             c_i1, c_i2 = st.columns(2)
             c_i1.metric("현재 RSI 지표", f"{curr_rsi:.1f}", rsi_status)
             c_i2.caption("RSI가 30 이하이면 너무 많이 떨어졌다는 뜻이며, 70 이상이면 단기 과열을 의미합니다.")
 
-            # 뉴스 스크랩 (yfinance)
             st.markdown("---")
-            st.markdown("##### 📰 최신 뉴스 & 기업 소식")
+            st.markdown(f"##### {p_icon('📰')}최신 뉴스 & 기업 소식")
             try:
                 t_obj = yf.Ticker(sel_t)
                 news = t_obj.news
@@ -390,10 +394,10 @@ if not data.empty:
                 st.write("뉴스를 불러오는 중 오류가 발생했습니다.")
 
     # ----------------------------------------------------
-    # TAB 4: 퀀트 & 리스크 분석 (복원)
+    # TAB 4: 퀀트 & 리스크 분석
     # ----------------------------------------------------
     with tab4:
-        st.markdown('<div class="guide-box">💡 <b>퀀트 리스크 분석</b>: 변동성, 샤프 지수, MDD(최대 하락폭) 등 전문적인 위험 지표를 분석합니다.</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="guide-box">{p_icon("💡")}<b>퀀트 리스크 분석</b>: 변동성, 샤프 지수, MDD(최대 하락폭) 등 전문적인 위험 지표를 분석합니다.</div>', unsafe_allow_html=True)
         
         q_rows = []
         for t in valid_tickers[:6]:
@@ -423,11 +427,28 @@ if not data.empty:
         """)
 
     # ----------------------------------------------------
-    # TAB 5: 프로 진단 보고서
+    # TAB 5: 프로 진단 보고서 (Free 안내 vs Pro 리포트)
     # ----------------------------------------------------
     with tab5:
         if not is_pro:
-            st.warning(L["pro_lock"])
+            st.markdown("""
+            <div class="pro-report-card" style="border-color: #6366F1;">
+                <h3 style="color: #6366F1; margin-top:0;">👑 Pro 모드란 무엇인가요?</h3>
+                <p style="color: #CBD5E1; font-size: 0.95rem;">
+                    Pro 모드는 주식 초보가 전문가 수준의 포트폴리오 관리를 경험할 수 있도록 <b>AI 포트폴리오 진단서</b> 및 <b>맞춤형 리밸런싱 처방전</b>을 제공하는 프리미엄 기능입니다.
+                </p>
+                <hr style="border-color: #334155; margin: 15px 0;">
+                <h5 style="color: #F8FAFC;">✨ Pro 전용 제공 혜택:</h5>
+                <ul style="color: #94A3B8; font-size: 0.9rem; line-height: 1.8;">
+                    <li><b>💎 시각적 픽토그램 UI</b>: 모든 메뉴 및 지표에 차별화된 고급 이모지 아이콘 적용</li>
+                    <li><b>📜 종합 포트폴리오 진단서</b>: 내 자산의 예상 수익률과 과거 1년 성과 종합 평가</li>
+                    <li><b>🛡️ 맞춤형 리밸런싱 처방전</b>: 손실 위험을 줄이기 위한 최적의 국장/미장 비중 추천</li>
+                </ul>
+                <div style="background-color: #0F172A; padding: 10px 14px; border-radius: 6px; margin-top: 15px; border: 1px solid #1E293B;">
+                    💡 <b>사용 방법</b>: 왼쪽 사이드바의 <b>[서비스 모드]</b> 설정에서 <b>Pro (전문가 모드)</b>를 선택하시면 즉시 모든 기능을 체험해보실 수 있습니다!
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
         else:
             p_res = st.session_state.get('port_res', None)
             if p_res:
