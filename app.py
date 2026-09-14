@@ -24,7 +24,7 @@ st.markdown("""
     
     /* 2. 모의투자 잔고 Metric 폰트 조정 (잘림 현상 해결) */
     [data-testid="stMetricValue"] {
-        font-size: 1.4rem !important; /* 폰트 크기를 줄여 1억 이상 금액도 ... 표시 없이 출력 */
+        font-size: 1.4rem !important;
         font-weight: 700 !important;
         white-space: nowrap !important;
     }
@@ -342,7 +342,7 @@ with tab3:
         st.plotly_chart(fig_candle, use_container_width=True)
 
 # ----------------------------------------------------
-# TAB 4: 퀀트 & 리스크 분석 (구현 완료!)
+# TAB 4: 퀀트 & 리스크 분석 (Plotly 버그 수정 적용)
 # ----------------------------------------------------
 with tab4:
     st.markdown(f'<div class="guide-box">{p_icon("💡")}<b>퀀트 리스크 분석</b>: 최근 1년 데이터를 기반으로 <b>{current_ticker}</b> 종목의 변동성, 샤프 지수, 최대 낙폭(MDD)을 측정합니다.</div>', unsafe_allow_html=True)
@@ -390,7 +390,7 @@ with tab4:
                 plot_bgcolor="rgba(0,0,0,0)",
                 height=280,
                 margin=dict(l=10, r=10, t=20, b=10),
-                yaxis=dict(title="낙폭 (%)", suffix="%")
+                yaxis=dict(title="낙폭 (%)", ticksuffix="%")
             )
             st.plotly_chart(fig_dd, use_container_width=True)
             
@@ -413,7 +413,7 @@ with tab4:
             st.plotly_chart(fig_dist, use_container_width=True)
             
     else:
-        st.warning("리스크 분석을 수행하기 위한 ausreichend 데이터가 부족합니다.")
+        st.warning("리스크 분석을 수행하기 위한 데이터가 부족합니다.")
 
 # ----------------------------------------------------
 # TAB 5: 프로 진단 보고서
