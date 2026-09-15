@@ -7,7 +7,7 @@ import plotly.express as px
 from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
 
-# 1. Page Configuration (앱 기본 설정)
+# 1. Page Configuration
 st.set_page_config(
     page_title="스톡랩 (StockLab)", 
     page_icon="🧪", 
@@ -32,7 +32,6 @@ st.markdown("""
     }
     .stApp { background-color: #0B0E14; color: #E2E8F0; font-family: 'Pretendard', sans-serif; }
     
-    /* 사이드바 전용 제목 & 설명 스타일 */
     .sidebar-header { font-size: 1.8rem; font-weight: 800; color: #38BDF8; margin-bottom: 2px; }
     .sidebar-subheader { font-size: 0.85rem; color: #94A3B8; margin-bottom: 15px; }
     
@@ -61,14 +60,14 @@ LANG_DICT = {
         "title": "StockLab", "subtitle": "주식 초보를 위한 모의투자 & 시뮬레이터",
         "currency_select": "표시 통화", "ver_select": "서비스 모드",
         "tab_sim": "모의투자 & 자산", "tab_calc": "포트폴리오 계산기",
-        "tab_tech": "기술적 분석 차트", "tab_risk": "퀀트 & 리스크 분석", "tab_predict": "AI 주가 예측 시뮬레이션",
+        "tab_tech": "기술적 분석 차트", "tab_risk": "퀀트 & 리스크 분석", "tab_predict": "몬테카를로 AI 예측",
         "buy_btn": "매수하기", "sell_btn": "매도하기"
     },
     "English": {
         "title": "StockLab", "subtitle": "Paper Trading & Portfolio Simulator",
         "currency_select": "Currency", "ver_select": "Mode",
         "tab_sim": "Trading & Holdings", "tab_calc": "Portfolio Calculator",
-        "tab_tech": "Technical Chart", "tab_risk": "Quant Risk", "tab_predict": "AI Price Forecast",
+        "tab_tech": "Technical Chart", "tab_risk": "Quant Risk", "tab_predict": "Monte Carlo Forecast",
         "buy_btn": "Buy", "sell_btn": "Sell"
     }
 }
@@ -104,7 +103,7 @@ def fetch_single_ticker_data(ticker, start, end):
     except Exception:
         return None
 
-# 세션 초기화
+# 세션 상태 초기화
 INIT_CASH = 100000000.0
 
 if 'cash' not in st.session_state:
@@ -113,51 +112,76 @@ if 'portfolio' not in st.session_state:
     st.session_state['portfolio'] = {}
 if 'search_ticker' not in st.session_state:
     st.session_state['search_ticker'] = "AAPL"
+if 'is_pro_user' not in st.session_state:
+    st.session_state['is_pro_user'] = False
 
 # ====================================================
-# 👈 1. 사이드바 최상단: 제목, 설명 및 모드/구매창
+# 💳 [요청 1] 프로 모드 결제 팝업 창 (Dialog)
+# ====================================================
+@st.dialog("👑 StockLab Pro 결제 및 구독")
+def show_pro_buy_dialog():
+    st.markdown("### 프리미엄 멤버십으로 업그레이드")
+    st.write("전문가 수준의 분석 툴과 초고속 AI 시뮬레이션을 잠금 해제하세요.")
+    
+    plan = st.radio("💳 결제 플랜 선택", ["월간 구독 (₩14,900 / 월)", "연간 구독 (₩119,000 / 년 - 33% 할인)"])
+    
+    st.text_input("💳 카드 번호", placeholder="0000 - 0000 - 0000 - 0000")
+    col_c1, col_c2 = st.columns(2)
+    with col_c1:
+        st.text_input("유효기간", placeholder="MM/YY")
+    with col_c2:
+        st.text_input("CVC", placeholder="3자리 숫자")
+        
+    st.markdown("---")
+    if st.button("🚀 결제 완료 및 Pro 활성화", use_container_width=True, type="primary"):
+        st.session_state['is_pro_user'] = True
+        st.success("🎉 결제가 정상 처리되었습니다! Pro 기능이 활성화되었습니다.")
+        st.rerun()
+
+# ====================================================
+# 👈 사이드바 최상단: 제목, 설명 및 구매 창
 # ====================================================
 selected_lang = st.sidebar.selectbox("🌐 Language", ["한국어", "English"], index=0)
 L = LANG_DICT.get(selected_lang, LANG_DICT["한국어"])
 
-# [요청 1] 왼쪽 창 맨 위로 올린 앱 제목과 설명
+# [수정] 사이드바 최상단 브랜드 제목 및 설명
 st.sidebar.markdown(f'<p class="sidebar-header">🧪 {L["title"]}</p>', unsafe_allow_html=True)
 st.sidebar.markdown(f'<p class="sidebar-subheader">{L["subtitle"]}</p>', unsafe_allow_html=True)
 st.sidebar.markdown("---")
 
-# 설정 요소
 rates = get_exchange_rates()
 curr_choice = st.sidebar.selectbox(L['currency_select'], ["KRW (₩)", "USD ($)", "JPY (¥)"], index=0)
 curr_key = curr_choice.split(" ")[0]
 fx_rate, curr_symbol = rates[curr_key]
 
-# [요청 2] 서비스 모드 및 프로 모드 구매 창 복구
-mode_choice = st.sidebar.selectbox(L['ver_select'], ["Free (기본 모드)", "Pro (전문가 모드)"], index=0)
-is_pro = "Pro" in mode_choice
-
-def p_icon(icon_str):
-    return f"{icon_str} " if is_pro else ""
+# [수정] 프로 구매 카드 및 상태 표시
+is_pro = st.session_state['is_pro_user']
 
 if not is_pro:
     st.sidebar.markdown("""
     <div class="pro-buy-card">
-        <div style="font-weight: 800; color: #A855F7; font-size: 0.95rem;">👑 StockLab Pro 구독하기</div>
+        <div style="font-weight: 800; color: #A855F7; font-size: 0.95rem;">👑 StockLab Pro 멤버십</div>
         <div style="font-size: 0.8rem; color: #CBD5E1; margin-top: 5px; margin-bottom: 10px;">
-            • AI 기반 주가 예측 시뮬레이션<br>
-            • 고급 퀀트 리스크 분석 보고서<br>
-            • 실시간 매매 알고리즘 신호 제공
+            • <b>최대 10,000회</b> 몬테카를로 예측 시뮬레이션<br>
+            • 고급 퀀트 리스크 리포트 산출<br>
+            • 실시간 스마트 매매 알고리즘 신호
         </div>
     </div>
     """, unsafe_allow_html=True)
-    if st.sidebar.button("✨ Pro 모드 체험하기", use_container_width=True):
-        st.sidebar.success("Pro 모드로 전환되었습니다!")
+    
+    if st.sidebar.button("💳 Pro 멤버십 구매하기", use_container_width=True, type="primary"):
+        show_pro_buy_dialog()
+else:
+    st.sidebar.success("👑 Pro 플랜 이용 중")
+    if st.sidebar.button("Free 모드로 전환", use_container_width=True):
+        st.session_state['is_pro_user'] = False
+        st.rerun()
 
-st.sidebar.markdown("📌 **버전 정보**: `v1.0.0 (Release)`")
+st.sidebar.markdown("📌 **버전 정보**: `v1.2.0 (Release)`")
 
 # ====================================================
 # 메인 화면 영역
 # ====================================================
-# 종목 검색 및 선택 컨트롤러
 st.markdown("### 🔍 종목 검색 및 선택")
 col_s1, col_s2 = st.columns([2, 3])
 
@@ -177,16 +201,15 @@ current_ticker = st.session_state['search_ticker']
 today = datetime.today()
 start_date = today - timedelta(days=365)
 
-with st.spinner(f"'{current_ticker}' 시세 정보 동기화 중..."):
+with st.spinner(f"'{current_ticker}' 시세 데이터 로딩 중..."):
     ticker_df = fetch_single_ticker_data(current_ticker, str(start_date.strftime('%Y-%m-%d')), str(today.strftime('%Y-%m-%d')))
 
-# 상단 상태 뱃지
 col_m1, col_m2 = st.columns([4, 1])
 with col_m2:
     if is_pro:
-        st.markdown('<div style="text-align:right;"><span class="pro-tag">👑 Pro Active</span></div>', unsafe_allow_html=True)
+        st.markdown('<div style="text-align:right;"><span class="pro-tag">👑 Pro Plan</span></div>', unsafe_allow_html=True)
     else:
-        st.markdown('<div style="text-align:right;"><span class="version-tag">Free Version</span></div>', unsafe_allow_html=True)
+        st.markdown('<div style="text-align:right;"><span class="version-tag">Free Plan</span></div>', unsafe_allow_html=True)
 
 # 탭 구성
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
@@ -308,7 +331,7 @@ with tab1:
 # TAB 2: 포트폴리오 계산기
 # ----------------------------------------------------
 with tab2:
-    st.markdown('<div class="guide-box">💡 <b>비중 분석</b>: 각 종목의 비중을 조절해보세요.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="guide-box">💡 <b>비중 분석</b>: 자산 비중을 조정하며 포트폴리오 구성을 검토하세요.</div>', unsafe_allow_html=True)
     sample_tickers = ["AAPL", "NVDA", "TSLA", "005930.KS"]
     weights = []
     
@@ -335,7 +358,7 @@ with tab2:
 # TAB 3: 기술적 분석
 # ----------------------------------------------------
 with tab3:
-    st.markdown(f'<div class="guide-box">💡 <b>기술적 차트</b>: {current_ticker} 종목의 캔들 차트 및 이동평균선 분석입니다.</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="guide-box">💡 <b>기술적 차트</b>: {current_ticker} 종목의 이동평균선과 거래량을 분석합니다.</div>', unsafe_allow_html=True)
     if ticker_df is not None and not ticker_df.empty:
         df_t = ticker_df.copy()
         df_t['MA20'] = df_t['Close'].rolling(20).mean()
@@ -388,7 +411,6 @@ with tab4:
         r4.metric("📉 최대 낙폭 (MDD)", f"{mdd:.2f}%")
         
         st.markdown("---")
-        
         col_mdd, col_dist = st.columns([1, 1])
         with col_mdd:
             st.markdown("##### 📉 고점 대비 낙폭(Drawdown) 추이")
@@ -403,99 +425,132 @@ with tab4:
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
                 height=280,
-                margin=dict(l=10, r=10, t=20, b=10),
-                yaxis=dict(title="낙폭 (%)", ticksuffix="%")
+                margin=dict(l=10, r=10, t=20, b=10)
             )
             st.plotly_chart(fig_dd, use_container_width=True)
             
         with col_dist:
             st.markdown("##### 📊 일간 수익률 분포")
-            fig_dist = px.histogram(
-                df_risk.dropna(), x="Daily_Return", nbins=40,
-                color_discrete_sequence=['#38BDF8']
-            )
+            fig_dist = px.histogram(df_risk.dropna(), x="Daily_Return", nbins=40, color_discrete_sequence=['#38BDF8'])
             fig_dist.update_layout(
                 template="plotly_dark",
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
                 height=280,
-                margin=dict(l=10, r=10, t=20, b=10),
-                xaxis=dict(title="일간 수익률", tickformat=".1%"),
-                yaxis=dict(title="빈도수"),
-                showlegend=False
+                margin=dict(l=10, r=10, t=20, b=10)
             )
             st.plotly_chart(fig_dist, use_container_width=True)
 
 # ----------------------------------------------------
-# 🎯 [요청 3] TAB 5: AI 주가/수익률 예측 시뮬레이션 복구
+# 🎲 [요청 2] TAB 5: 몬테카를로 시뮬레이션 (1,000회 / Pro 10,000회) 복구
 # ----------------------------------------------------
 with tab5:
-    st.markdown(f'<div class="guide-box">💡 <b>AI 주가 예측 엔진</b>: 최근 {current_ticker} 종목의 추세와 이동평균 모멘텀을 바탕으로 미래 주가 시나리오를 예측합니다.</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="guide-box">💡 <b>몬테카를로 확률 예측</b>: 과거 주가 변동성(기하 브라운 운동, GBM)을 기반으로 미래 <b>N가지 주가 경로 시뮬레이션</b>을 수행합니다.</div>', unsafe_allow_html=True)
     
     if ticker_df is not None and not ticker_df.empty and len(ticker_df) > 30:
-        df_p = ticker_df.copy()
-        last_price = df_p['Close'].iloc[-1]
+        df_mc = ticker_df.copy()
+        last_price = df_mc['Close'].iloc[-1]
         
-        # 최근 60일 일평균 수익률 및 변동성 기반 시뮬레이션
-        returns_60 = df_p['Close'].pct_change().dropna().tail(60)
-        mu = returns_60.mean()
-        sigma = returns_60.std()
+        # 일간 변동성 및 기대수익률 산출
+        log_returns = np.log(df_mc['Close'] / df_mc['Close'].shift(1)).dropna()
+        u = log_returns.mean()
+        var = log_returns.var()
+        drift = u - (0.5 * var)
+        stdev = log_returns.std()
         
-        # 예측 날짜 생성 (미래 90일)
-        future_days = 90
-        last_date = df_p.index[-1]
-        future_dates = [last_date + timedelta(days=i) for i in range(1, future_days + 1)]
-        
-        # 몬테카를로 시뮬레이션 기반 3가지 시나리오 (상승 / 중립 / 하락)
+        # 시뮬레이션 옵션
+        col_ctrl1, col_ctrl2 = st.columns([1, 2])
+        with col_ctrl1:
+            pred_days = st.slider("📆 미래 예측 기간 (일수)", min_value=30, max_value=252, value=90, step=30)
+            
+            # 시뮬레이션 횟수 제한 (Free: 1,000회 고정 / Pro: 최대 10,000회 선택)
+            if is_pro:
+                num_simulations = st.slider("🎲 몬테카를로 시뮬레이션 횟수 (Pro)", min_value=1000, max_value=10000, value=5000, step=1000)
+                st.caption("👑 Pro 사용자: 최대 10,000회 정밀 시뮬레이션 사용 중")
+            else:
+                num_simulations = 1000
+                st.info("💡 Free 플랜: **1,000회** 시뮬레이션을 실행합니다. (Pro 업그레이드 시 10,000회 지원)")
+
+        # 몬테카를로 시뮬레이션 연산
         np.random.seed(42)
-        sim_neutral = last_price * np.exp(np.cumsum(np.full(future_days, mu)))
-        sim_bull = last_price * np.exp(np.cumsum(np.full(future_days, mu + 0.5 * sigma)))
-        sim_bear = last_price * np.exp(np.cumsum(np.full(future_days, mu - 0.5 * sigma)))
+        daily_returns = np.exp(drift + stdev * np.random.normal(0, 1, (pred_days, num_simulations)))
         
-        # 예상 주가 요약
-        p30 = sim_neutral[29]
-        p60 = sim_neutral[59]
-        p90 = sim_neutral[89]
+        price_list = np.zeros_like(daily_returns)
+        price_list[0] = last_price
+        for t in range(1, pred_days):
+            price_list[t] = price_list[t - 1] * daily_returns[t]
+            
+        # 통계 산출
+        final_prices = price_list[-1]
+        p_10 = np.percentile(final_prices, 10)
+        p_25 = np.percentile(final_prices, 25)
+        p_50 = np.median(final_prices)
+        p_75 = np.percentile(final_prices, 75)
+        p_90 = np.percentile(final_prices, 90)
+
+        # 요약 메트릭 출력
+        p_scale = fx_rate if not current_ticker.endswith(".KS") else 1.0
         
-        curr_p_krw = last_price if current_ticker.endswith(".KS") else last_price * c_krw
-        
-        e1, e2, e3 = st.columns(3)
-        e1.metric("📅 30일 후 예상가", f"{curr_symbol}{(p30 if current_ticker.endswith('.KS') else p30 * c_krw) * disp_scale:,.0f}", f"{((p30 - last_price)/last_price)*100:+.2f}%")
-        e2.metric("📅 60일 후 예상가", f"{curr_symbol}{(p60 if current_ticker.endswith('.KS') else p60 * c_krw) * disp_scale:,.0f}", f"{((p60 - last_price)/last_price)*100:+.2f}%")
-        e3.metric("📅 90일 후 예상가", f"{curr_symbol}{(p90 if current_ticker.endswith('.KS') else p90 * c_krw) * disp_scale:,.0f}", f"{((p90 - last_price)/last_price)*100:+.2f}%")
-        
+        m1, m2, m3, m4, m5 = st.columns(5)
+        m1.metric("🔥 상위 10% (Best)", f"{curr_symbol}{p_90 * p_scale:,.0f}", f"{((p_90 - last_price)/last_price)*100:+.1f}%")
+        m2.metric("📈 상위 25%", f"{curr_symbol}{p_75 * p_scale:,.0f}", f"{((p_75 - last_price)/last_price)*100:+.1f}%")
+        m3.metric("🎯 중앙값 (Expected)", f"{curr_symbol}{p_50 * p_scale:,.0f}", f"{((p_50 - last_price)/last_price)*100:+.1f}%")
+        m4.metric("📉 하위 25%", f"{curr_symbol}{p_25 * p_scale:,.0f}", f"{((p_25 - last_price)/last_price)*100:+.1f}%")
+        m5.metric("❄️ 하위 10% (Worst)", f"{curr_symbol}{p_10 * p_scale:,.0f}", f"{((p_10 - last_price)/last_price)*100:+.1f}%")
+
         st.markdown("---")
-        st.markdown(f"##### 📈 미래 90일 주가 시나리오 예측 그래프 ({current_ticker})")
         
-        fig_pred = go.Figure()
-        
-        # 과거 데이터 (최근 90일)
-        df_past = df_p.tail(90)
-        past_y = df_past['Close'] if current_ticker.endswith(".KS") else df_past['Close'] * c_krw
-        fig_pred.add_trace(go.Scatter(x=df_past.index, y=past_y * disp_scale, name="과거 주가", line=dict(color="#38BDF8", width=2)))
-        
-        # 예측 데이터 연결
-        future_y_neutral = sim_neutral if current_ticker.endswith(".KS") else sim_neutral * c_krw
-        future_y_bull = sim_bull if current_ticker.endswith(".KS") else sim_bull * c_krw
-        future_y_bear = sim_bear if current_ticker.endswith(".KS") else sim_bear * c_krw
-        
-        fig_pred.add_trace(go.Scatter(x=future_dates, y=future_y_bull * disp_scale, name="긍정적 시나리오 (Bull)", line=dict(color="#10B981", width=1.5, dash="dash")))
-        fig_pred.add_trace(go.Scatter(x=future_dates, y=future_y_neutral * disp_scale, name="기본 예상 추세 (Neutral)", line=dict(color="#F59E0B", width=2)))
-        fig_pred.add_trace(go.Scatter(x=future_dates, y=future_y_bear * disp_scale, name="보수적 시나리오 (Bear)", line=dict(color="#EF4444", width=1.5, dash="dash")))
-        
-        fig_pred.update_layout(
-            template="plotly_dark",
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            height=380,
-            margin=dict(l=10, r=10, t=10, b=10),
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-        )
-        st.plotly_chart(fig_pred, use_container_width=True)
-        
-        st.caption("⚠️ 해당 예측 알고리즘은 과거 변동성 데이터 기반 시뮬레이션 결과이며, 실제 주가 움직임과 다를 수 있습니다.")
+        # 차트 시각화
+        col_c1, col_c2 = st.columns([2, 1])
+        with col_c1:
+            st.markdown(f"##### 🎲 {num_simulations:,}개 경로 시뮬레이션 시각화 ({pred_days}일 후)")
+            fig_mc = go.Figure()
+            
+            # 시각적 가독성을 위해 일부 경로(최대 100개)만 표출
+            sample_paths = price_list[:, :min(100, num_simulations)]
+            for i in range(sample_paths.shape[1]):
+                fig_mc.add_trace(go.Scatter(
+                    y=sample_paths[:, i] * p_scale, 
+                    mode='lines', 
+                    line=dict(width=0.6, color='rgba(56, 189, 248, 0.15)'), 
+                    showlegend=False
+                ))
+                
+            # 중앙값 및 주요 백분위 라인 강조
+            fig_mc.add_trace(go.Scatter(y=np.percentile(price_list, 90, axis=1) * p_scale, name="상위 10%", line=dict(color='#10B981', width=2)))
+            fig_mc.add_trace(go.Scatter(y=np.median(price_list, axis=1) * p_scale, name="중앙값 (50%)", line=dict(color='#F59E0B', width=2.5)))
+            fig_mc.add_trace(go.Scatter(y=np.percentile(price_list, 10, axis=1) * p_scale, name="하위 10%", line=dict(color='#EF4444', width=2)))
+
+            fig_mc.update_layout(
+                template="plotly_dark",
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                height=380,
+                margin=dict(l=10, r=10, t=10, b=10),
+                xaxis=dict(title="경과 일수 (Day)"),
+                yaxis=dict(title=f"예상 주가 ({curr_symbol})")
+            )
+            st.plotly_chart(fig_mc, use_container_width=True)
+
+        with col_c2:
+            st.markdown("##### 📊 최종 도달 주가 분포")
+            fig_hist = px.histogram(
+                x=final_prices * p_scale, nbins=50, 
+                color_discrete_sequence=['#A855F7'],
+                labels={'x': f'최종 주가 ({curr_symbol})'}
+            )
+            fig_hist.update_layout(
+                template="plotly_dark",
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                height=380,
+                margin=dict(l=10, r=10, t=10, b=10),
+                yaxis=dict(title="빈도수")
+            )
+            st.plotly_chart(fig_hist, use_container_width=True)
+
     else:
-        st.warning("주가 예측 시뮬레이션을 위한 데이터가 부족합니다.")
+        st.warning("몬테카를로 시뮬레이션을 수행하기 위한 충분한 주가 데이터가 존재하지 않습니다.")
 
 st.sidebar.markdown("---")
 st.sidebar.caption("ⓒ StockLab All Rights Reserved.")
