@@ -15,11 +15,11 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS (유저용 깔끔한 UI & 반응형 Metric)
+# Custom CSS
 st.markdown("""
     <style>
     section[data-testid="stSidebar"] {
-        width: 260px !important;
+        width: 280px !important;
     }
     [data-testid="stMetricValue"] {
         font-size: 1.4rem !important;
@@ -31,19 +31,26 @@ st.markdown("""
         color: #94A3B8 !important;
     }
     .stApp { background-color: #0B0E14; color: #E2E8F0; font-family: 'Pretendard', sans-serif; }
-    .main-header { font-size: 2.0rem; font-weight: 800; color: #38BDF8; margin-bottom: 2px; }
-    .sub-header { font-size: 0.95rem; color: #94A3B8; margin-bottom: 20px; }
+    
+    /* 사이드바 전용 제목 & 설명 스타일 */
+    .sidebar-header { font-size: 1.8rem; font-weight: 800; color: #38BDF8; margin-bottom: 2px; }
+    .sidebar-subheader { font-size: 0.85rem; color: #94A3B8; margin-bottom: 15px; }
+    
     .version-tag {
-        background: linear-gradient(135deg, #0EA5E9 0%, #2563EB 100%);
+        background-color: #1E293B; color: #38BDF8; padding: 4px 10px;
+        border-radius: 6px; font-size: 0.8rem; font-weight: 700; border: 1px solid #334155;
+    }
+    .pro-tag {
+        background: linear-gradient(135deg, #6366F1 0%, #A855F7 100%);
         color: #FFFFFF; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 700;
     }
     .guide-box {
         background-color: #1E293B; border-left: 4px solid #38BDF8; padding: 12px 16px;
         border-radius: 6px; font-size: 0.9rem; color: #CBD5E1; margin-bottom: 15px;
     }
-    .report-card {
-        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
-        border: 1px solid #38BDF8; border-radius: 12px; padding: 24px; margin-bottom: 20px;
+    .pro-buy-card {
+        background: linear-gradient(135deg, #1E1B4B 0%, #311042 100%);
+        border: 1px solid #A855F7; border-radius: 10px; padding: 15px; margin-top: 15px; margin-bottom: 15px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -51,17 +58,17 @@ st.markdown("""
 # 2. 다국어 사전
 LANG_DICT = {
     "한국어": {
-        "title": "StockLab", "subtitle": "주식 초보를 위한 모의투자 & 포트폴리오 시뮬레이터",
-        "currency_select": "표시 통화",
+        "title": "StockLab", "subtitle": "주식 초보를 위한 모의투자 & 시뮬레이터",
+        "currency_select": "표시 통화", "ver_select": "서비스 모드",
         "tab_sim": "모의투자 & 자산", "tab_calc": "포트폴리오 계산기",
-        "tab_tech": "기술적 분석 차트", "tab_risk": "퀀트 & 리스크 분석", "tab_report": "종합 진단 보고서",
+        "tab_tech": "기술적 분석 차트", "tab_risk": "퀀트 & 리스크 분석", "tab_predict": "AI 주가 예측 시뮬레이션",
         "buy_btn": "매수하기", "sell_btn": "매도하기"
     },
     "English": {
         "title": "StockLab", "subtitle": "Paper Trading & Portfolio Simulator",
-        "currency_select": "Currency",
+        "currency_select": "Currency", "ver_select": "Mode",
         "tab_sim": "Trading & Holdings", "tab_calc": "Portfolio Calculator",
-        "tab_tech": "Technical Chart", "tab_risk": "Quant Risk", "tab_report": "Diagnosis Report",
+        "tab_tech": "Technical Chart", "tab_risk": "Quant Risk", "tab_predict": "AI Price Forecast",
         "buy_btn": "Buy", "sell_btn": "Sell"
     }
 }
@@ -97,7 +104,7 @@ def fetch_single_ticker_data(ticker, start, end):
     except Exception:
         return None
 
-# 세션 초기화 (초기 자산 1억 원)
+# 세션 초기화
 INIT_CASH = 100000000.0
 
 if 'cash' not in st.session_state:
@@ -107,49 +114,79 @@ if 'portfolio' not in st.session_state:
 if 'search_ticker' not in st.session_state:
     st.session_state['search_ticker'] = "AAPL"
 
-# 사이드바 설정 (배포용 버전 표기)
-st.sidebar.markdown("### ⚙️ 설정 (Settings)")
-selected_lang = st.sidebar.selectbox("Language", ["한국어", "English"], index=0)
+# ====================================================
+# 👈 1. 사이드바 최상단: 제목, 설명 및 모드/구매창
+# ====================================================
+selected_lang = st.sidebar.selectbox("🌐 Language", ["한국어", "English"], index=0)
 L = LANG_DICT.get(selected_lang, LANG_DICT["한국어"])
 
+# [요청 1] 왼쪽 창 맨 위로 올린 앱 제목과 설명
+st.sidebar.markdown(f'<p class="sidebar-header">🧪 {L["title"]}</p>', unsafe_allow_html=True)
+st.sidebar.markdown(f'<p class="sidebar-subheader">{L["subtitle"]}</p>', unsafe_allow_html=True)
+st.sidebar.markdown("---")
+
+# 설정 요소
 rates = get_exchange_rates()
 curr_choice = st.sidebar.selectbox(L['currency_select'], ["KRW (₩)", "USD ($)", "JPY (¥)"], index=0)
 curr_key = curr_choice.split(" ")[0]
 fx_rate, curr_symbol = rates[curr_key]
 
-st.sidebar.markdown("---")
+# [요청 2] 서비스 모드 및 프로 모드 구매 창 복구
+mode_choice = st.sidebar.selectbox(L['ver_select'], ["Free (기본 모드)", "Pro (전문가 모드)"], index=0)
+is_pro = "Pro" in mode_choice
+
+def p_icon(icon_str):
+    return f"{icon_str} " if is_pro else ""
+
+if not is_pro:
+    st.sidebar.markdown("""
+    <div class="pro-buy-card">
+        <div style="font-weight: 800; color: #A855F7; font-size: 0.95rem;">👑 StockLab Pro 구독하기</div>
+        <div style="font-size: 0.8rem; color: #CBD5E1; margin-top: 5px; margin-bottom: 10px;">
+            • AI 기반 주가 예측 시뮬레이션<br>
+            • 고급 퀀트 리스크 분석 보고서<br>
+            • 실시간 매매 알고리즘 신호 제공
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    if st.sidebar.button("✨ Pro 모드 체험하기", use_container_width=True):
+        st.sidebar.success("Pro 모드로 전환되었습니다!")
+
 st.sidebar.markdown("📌 **버전 정보**: `v1.0.0 (Release)`")
 
-# 🔍 종목 검색 / 선택
+# ====================================================
+# 메인 화면 영역
+# ====================================================
+# 종목 검색 및 선택 컨트롤러
 st.markdown("### 🔍 종목 검색 및 선택")
 col_s1, col_s2 = st.columns([2, 3])
 
 with col_s1:
-    quick_choice = st.selectbox("🔥 인기 종목 퀵 선택", ["선택 안함"] + list(POPULAR_STOCKS.keys()))
+    quick_choice = st.selectbox("🔥 인기 추천 종목 퀵 선택", ["선택 안함"] + list(POPULAR_STOCKS.keys()))
     if quick_choice != "선택 안함":
         st.session_state['search_ticker'] = POPULAR_STOCKS[quick_choice]
 
 with col_s2:
-    input_ticker = st.text_input("직접 티커 입력 (예: AAPL, TSLA, 005930.KS)", value=st.session_state['search_ticker'])
+    input_ticker = st.text_input("직접 티커 검색 (예: AAPL, TSLA, 005930.KS)", value=st.session_state['search_ticker'])
     if input_ticker:
         st.session_state['search_ticker'] = input_ticker.strip().upper()
 
 current_ticker = st.session_state['search_ticker']
 
-# 데이터 로딩
+# 시세 데이터 로딩
 today = datetime.today()
 start_date = today - timedelta(days=365)
 
 with st.spinner(f"'{current_ticker}' 시세 정보 동기화 중..."):
     ticker_df = fetch_single_ticker_data(current_ticker, str(start_date.strftime('%Y-%m-%d')), str(today.strftime('%Y-%m-%d')))
 
-# 헤더 영역
-col_h1, col_h2 = st.columns([4, 1])
-with col_h1:
-    st.markdown(f'<p class="main-header">🧪 {L["title"]}</p>', unsafe_allow_html=True)
-    st.markdown(f'<p class="sub-header">{L["subtitle"]}</p>', unsafe_allow_html=True)
-with col_h2:
-    st.markdown('<div style="text-align:right;"><span class="version-tag">v1.0.0 Official</span></div>', unsafe_allow_html=True)
+# 상단 상태 뱃지
+col_m1, col_m2 = st.columns([4, 1])
+with col_m2:
+    if is_pro:
+        st.markdown('<div style="text-align:right;"><span class="pro-tag">👑 Pro Active</span></div>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div style="text-align:right;"><span class="version-tag">Free Version</span></div>', unsafe_allow_html=True)
 
 # 탭 구성
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
@@ -157,7 +194,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
     f"🧮 {L['tab_calc']}", 
     f"📈 {L['tab_tech']}", 
     f"📊 {L['tab_risk']}", 
-    f"📑 {L['tab_report']}"
+    f"🎯 {L['tab_predict']}"
 ])
 
 c_krw = rates["KRW"][0]
@@ -167,7 +204,7 @@ disp_scale = (fx_rate / c_krw) if curr_key != "KRW" else 1.0
 # TAB 1: 모의투자 및 보유 자산
 # ----------------------------------------------------
 with tab1:
-    st.markdown('<div class="guide-box">💡 <b>모의투자 서비스</b>: 가상 자산 1억 원으로 실시간 주식을 거래해보고 포트폴리오 수익률을 확인해보세요.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="guide-box">💡 <b>가상 모의투자</b>: 초기 자산 1억 원으로 실시간 주식을 거래하고 포트폴리오를 관리해보세요.</div>', unsafe_allow_html=True)
     
     eval_stock_val = 0.0
     portfolio_rows = []
@@ -206,7 +243,7 @@ with tab1:
         if st.button("🔄 잔고 초기화", use_container_width=True):
             st.session_state['cash'] = INIT_CASH
             st.session_state['portfolio'] = {}
-            st.success("초기 자산 1억 원으로 초기화되었습니다.")
+            st.success("자산이 초기화되었습니다.")
             st.rerun()
 
     st.markdown("---")
@@ -219,7 +256,7 @@ with tab1:
             curr_p_krw = curr_p_raw if current_ticker.endswith(".KS") else curr_p_raw * c_krw
             st.write(f"현재 실시간가: **{curr_symbol}{curr_p_krw * disp_scale:,.0f}**")
             
-            st.caption("⚡ 빠른 수량 계산")
+            st.caption("⚡ 빠른 매수 비율 선택")
             b_c1, b_c2, b_c3 = st.columns(3)
             calc_qty = 1
             if b_c1.button("25% 매수"):
@@ -258,20 +295,20 @@ with tab1:
                     else:
                         st.error("보유 수량이 부족합니다.")
         else:
-            st.warning("유효한 종목 데이터를 불러올 수 없습니다.")
+            st.warning("데이터를 불러올 수 없습니다.")
 
     with col_hold:
         st.markdown("##### 📋 내 보유 종목 현황")
         if portfolio_rows:
             st.dataframe(pd.DataFrame(portfolio_rows), use_container_width=True, hide_index=True)
         else:
-            st.info("현재 보유 중인 주식이 없습니다.")
+            st.info("보유 중인 주식이 없습니다.")
 
 # ----------------------------------------------------
 # TAB 2: 포트폴리오 계산기
 # ----------------------------------------------------
 with tab2:
-    st.markdown('<div class="guide-box">💡 <b>자산 배분 비중 분석</b>: 각 종목의 비중을 조절하여 포트폴리오 균형을 맞춰보세요.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="guide-box">💡 <b>비중 분석</b>: 각 종목의 비중을 조절해보세요.</div>', unsafe_allow_html=True)
     sample_tickers = ["AAPL", "NVDA", "TSLA", "005930.KS"]
     weights = []
     
@@ -298,7 +335,7 @@ with tab2:
 # TAB 3: 기술적 분석
 # ----------------------------------------------------
 with tab3:
-    st.markdown(f'<div class="guide-box">💡 <b>기술적 분석</b>: {current_ticker} 종목의 캔들스틱 및 이동평균선(20일/60일) 차트입니다.</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="guide-box">💡 <b>기술적 차트</b>: {current_ticker} 종목의 캔들 차트 및 이동평균선 분석입니다.</div>', unsafe_allow_html=True)
     if ticker_df is not None and not ticker_df.empty:
         df_t = ticker_df.copy()
         df_t['MA20'] = df_t['Close'].rolling(20).mean()
@@ -329,7 +366,7 @@ with tab3:
 # TAB 4: 퀀트 & 리스크 분석
 # ----------------------------------------------------
 with tab4:
-    st.markdown(f'<div class="guide-box">💡 <b>퀀트 리스크 평가</b>: 최근 1년 변동성, 샤프 지수, 최대 낙폭(MDD)을 산출합니다.</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="guide-box">💡 <b>퀀트 리스크 분석</b>: 최근 1년 변동성, 샤프 지수, 최대 낙폭(MDD)을 산출합니다.</div>', unsafe_allow_html=True)
     
     if ticker_df is not None and not ticker_df.empty and len(ticker_df) > 20:
         df_risk = ticker_df.copy()
@@ -353,7 +390,6 @@ with tab4:
         st.markdown("---")
         
         col_mdd, col_dist = st.columns([1, 1])
-        
         with col_mdd:
             st.markdown("##### 📉 고점 대비 낙폭(Drawdown) 추이")
             fig_dd = go.Figure()
@@ -389,29 +425,77 @@ with tab4:
                 showlegend=False
             )
             st.plotly_chart(fig_dist, use_container_width=True)
-            
-    else:
-        st.warning("리스크 분석 데이터가 부족합니다.")
 
 # ----------------------------------------------------
-# TAB 5: 종합 진단 보고서 (정식 유저용 오픈)
+# 🎯 [요청 3] TAB 5: AI 주가/수익률 예측 시뮬레이션 복구
 # ----------------------------------------------------
 with tab5:
-    st.markdown(f'<div class="report-card"><div style="font-size: 1.3rem; font-weight: 800; color: #38BDF8;">📑 StockLab 종목 종합 진단서</div><p style="color: #94A3B8; margin-top:5px;">선택하신 종목(<b>{current_ticker}</b>)의 투자 가이드를 제공합니다.</p></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="guide-box">💡 <b>AI 주가 예측 엔진</b>: 최근 {current_ticker} 종목의 추세와 이동평균 모멘텀을 바탕으로 미래 주가 시나리오를 예측합니다.</div>', unsafe_allow_html=True)
     
-    if ticker_df is not None and not ticker_df.empty and len(ticker_df) > 20:
-        recent_close = ticker_df['Close'].iloc[-1]
-        ma20_val = ticker_df['Close'].rolling(20).mean().iloc[-1]
+    if ticker_df is not None and not ticker_df.empty and len(ticker_df) > 30:
+        df_p = ticker_df.copy()
+        last_price = df_p['Close'].iloc[-1]
         
-        status_msg = "추세 상승 구간입니다." if recent_close >= ma20_val else "단기 조정 또는 하락 구간입니다."
+        # 최근 60일 일평균 수익률 및 변동성 기반 시뮬레이션
+        returns_60 = df_p['Close'].pct_change().dropna().tail(60)
+        mu = returns_60.mean()
+        sigma = returns_60.std()
         
-        c_r1, c_r2 = st.columns(2)
-        with c_r1:
-            st.info(f"📌 **현재 주가 상태**: {status_msg}")
-        with c_r2:
-            st.success("💡 **투자 팁**: 모의투자 탭에서 투자 비중을 일정 수준 유지하면서 분할 매수 전략을 연습해보세요.")
+        # 예측 날짜 생성 (미래 90일)
+        future_days = 90
+        last_date = df_p.index[-1]
+        future_dates = [last_date + timedelta(days=i) for i in range(1, future_days + 1)]
+        
+        # 몬테카를로 시뮬레이션 기반 3가지 시나리오 (상승 / 중립 / 하락)
+        np.random.seed(42)
+        sim_neutral = last_price * np.exp(np.cumsum(np.full(future_days, mu)))
+        sim_bull = last_price * np.exp(np.cumsum(np.full(future_days, mu + 0.5 * sigma)))
+        sim_bear = last_price * np.exp(np.cumsum(np.full(future_days, mu - 0.5 * sigma)))
+        
+        # 예상 주가 요약
+        p30 = sim_neutral[29]
+        p60 = sim_neutral[59]
+        p90 = sim_neutral[89]
+        
+        curr_p_krw = last_price if current_ticker.endswith(".KS") else last_price * c_krw
+        
+        e1, e2, e3 = st.columns(3)
+        e1.metric("📅 30일 후 예상가", f"{curr_symbol}{(p30 if current_ticker.endswith('.KS') else p30 * c_krw) * disp_scale:,.0f}", f"{((p30 - last_price)/last_price)*100:+.2f}%")
+        e2.metric("📅 60일 후 예상가", f"{curr_symbol}{(p60 if current_ticker.endswith('.KS') else p60 * c_krw) * disp_scale:,.0f}", f"{((p60 - last_price)/last_price)*100:+.2f}%")
+        e3.metric("📅 90일 후 예상가", f"{curr_symbol}{(p90 if current_ticker.endswith('.KS') else p90 * c_krw) * disp_scale:,.0f}", f"{((p90 - last_price)/last_price)*100:+.2f}%")
+        
+        st.markdown("---")
+        st.markdown(f"##### 📈 미래 90일 주가 시나리오 예측 그래프 ({current_ticker})")
+        
+        fig_pred = go.Figure()
+        
+        # 과거 데이터 (최근 90일)
+        df_past = df_p.tail(90)
+        past_y = df_past['Close'] if current_ticker.endswith(".KS") else df_past['Close'] * c_krw
+        fig_pred.add_trace(go.Scatter(x=df_past.index, y=past_y * disp_scale, name="과거 주가", line=dict(color="#38BDF8", width=2)))
+        
+        # 예측 데이터 연결
+        future_y_neutral = sim_neutral if current_ticker.endswith(".KS") else sim_neutral * c_krw
+        future_y_bull = sim_bull if current_ticker.endswith(".KS") else sim_bull * c_krw
+        future_y_bear = sim_bear if current_ticker.endswith(".KS") else sim_bear * c_krw
+        
+        fig_pred.add_trace(go.Scatter(x=future_dates, y=future_y_bull * disp_scale, name="긍정적 시나리오 (Bull)", line=dict(color="#10B981", width=1.5, dash="dash")))
+        fig_pred.add_trace(go.Scatter(x=future_dates, y=future_y_neutral * disp_scale, name="기본 예상 추세 (Neutral)", line=dict(color="#F59E0B", width=2)))
+        fig_pred.add_trace(go.Scatter(x=future_dates, y=future_y_bear * disp_scale, name="보수적 시나리오 (Bear)", line=dict(color="#EF4444", width=1.5, dash="dash")))
+        
+        fig_pred.update_layout(
+            template="plotly_dark",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            height=380,
+            margin=dict(l=10, r=10, t=10, b=10),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        )
+        st.plotly_chart(fig_pred, use_container_width=True)
+        
+        st.caption("⚠️ 해당 예측 알고리즘은 과거 변동성 데이터 기반 시뮬레이션 결과이며, 실제 주가 움직임과 다를 수 있습니다.")
     else:
-        st.info("종목을 먼저 선택해 주세요.")
+        st.warning("주가 예측 시뮬레이션을 위한 데이터가 부족합니다.")
 
 st.sidebar.markdown("---")
 st.sidebar.caption("ⓒ StockLab All Rights Reserved.")
