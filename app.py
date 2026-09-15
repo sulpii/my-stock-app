@@ -19,7 +19,7 @@ st.set_page_config(
 st.markdown("""
     <style>
     section[data-testid="stSidebar"] {
-        width: 280px !important;
+        width: 290px !important;
     }
     [data-testid="stMetricValue"] {
         font-size: 1.4rem !important;
@@ -35,11 +35,15 @@ st.markdown("""
     .sidebar-header { font-size: 1.8rem; font-weight: 800; color: #38BDF8; margin-bottom: 2px; }
     .sidebar-subheader { font-size: 0.85rem; color: #94A3B8; margin-bottom: 15px; }
     
-    .version-tag {
-        background-color: #1E293B; color: #38BDF8; padding: 4px 10px;
-        border-radius: 6px; font-size: 0.8rem; font-weight: 700; border: 1px solid #334155;
+    .badge-free {
+        background-color: #334155; color: #94A3B8; padding: 4px 10px;
+        border-radius: 6px; font-size: 0.8rem; font-weight: 700;
     }
-    .pro-tag {
+    .badge-lite {
+        background-color: #0284C7; color: #FFFFFF; padding: 4px 10px;
+        border-radius: 6px; font-size: 0.8rem; font-weight: 700;
+    }
+    .badge-pro {
         background: linear-gradient(135deg, #6366F1 0%, #A855F7 100%);
         color: #FFFFFF; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 700;
     }
@@ -47,9 +51,9 @@ st.markdown("""
         background-color: #1E293B; border-left: 4px solid #38BDF8; padding: 12px 16px;
         border-radius: 6px; font-size: 0.9rem; color: #CBD5E1; margin-bottom: 15px;
     }
-    .pro-buy-card {
-        background: linear-gradient(135deg, #1E1B4B 0%, #311042 100%);
-        border: 1px solid #A855F7; border-radius: 10px; padding: 15px; margin-top: 15px; margin-bottom: 15px;
+    .plan-card {
+        background: linear-gradient(135deg, #1E1B4B 0%, #111827 100%);
+        border: 1px solid #6366F1; border-radius: 10px; padding: 15px; margin-top: 10px; margin-bottom: 15px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -57,15 +61,15 @@ st.markdown("""
 # 2. 다국어 사전
 LANG_DICT = {
     "한국어": {
-        "title": "StockLab", "subtitle": "주식 초보를 위한 모의투자 & 시뮬레이터",
-        "currency_select": "표시 통화", "ver_select": "서비스 모드",
+        "title": "StockLab", "subtitle": "주식 모의투자 & AI 시뮬레이터",
+        "currency_select": "표시 통화",
         "tab_sim": "모의투자 & 자산", "tab_calc": "포트폴리오 계산기",
         "tab_tech": "기술적 분석 차트", "tab_risk": "퀀트 & 리스크 분석", "tab_predict": "몬테카를로 AI 예측",
         "buy_btn": "매수하기", "sell_btn": "매도하기"
     },
     "English": {
-        "title": "StockLab", "subtitle": "Paper Trading & Portfolio Simulator",
-        "currency_select": "Currency", "ver_select": "Mode",
+        "title": "StockLab", "subtitle": "Paper Trading & AI Simulator",
+        "currency_select": "Currency",
         "tab_sim": "Trading & Holdings", "tab_calc": "Portfolio Calculator",
         "tab_tech": "Technical Chart", "tab_risk": "Quant Risk", "tab_predict": "Monte Carlo Forecast",
         "buy_btn": "Buy", "sell_btn": "Sell"
@@ -78,8 +82,7 @@ POPULAR_STOCKS = {
     "🔥 인기: 테슬라 (TSLA)": "TSLA",
     "🔥 인기: 삼성전자 (005930.KS)": "005930.KS",
     "🔥 인기: SK하이닉스 (000660.KS)": "000660.KS",
-    "🔥 인기: S&P500 ETF (SPY)": "SPY",
-    "🔥 인기: KODEX 200 (069500.KS)": "069500.KS"
+    "🔥 인기: S&P500 ETF (SPY)": "SPY"
 }
 
 @st.cache_data(ttl=3600, show_spinner=False)
@@ -112,18 +115,25 @@ if 'portfolio' not in st.session_state:
     st.session_state['portfolio'] = {}
 if 'search_ticker' not in st.session_state:
     st.session_state['search_ticker'] = "AAPL"
-if 'is_pro_user' not in st.session_state:
-    st.session_state['is_pro_user'] = False
+if 'user_plan' not in st.session_state:
+    st.session_state['user_plan'] = "Free"  # Free, Lite, Pro
+if 'trial_end_date' not in st.session_state:
+    st.session_state['trial_end_date'] = None
 
 # ====================================================
-# 💳 [요청 1] 프로 모드 결제 팝업 창 (Dialog)
+# 💳 결제 및 멤버십 구매 팝업 모달 (Dialog)
 # ====================================================
-@st.dialog("👑 StockLab Pro 결제 및 구독")
-def show_pro_buy_dialog():
-    st.markdown("### 프리미엄 멤버십으로 업그레이드")
-    st.write("전문가 수준의 분석 툴과 초고속 AI 시뮬레이션을 잠금 해제하세요.")
+@st.dialog("💳 StockLab 플랜 결제 및 변경")
+def show_buy_dialog():
+    st.markdown("### 플랜을 선택하고 결제를 진행하세요")
     
-    plan = st.radio("💳 결제 플랜 선택", ["월간 구독 (₩14,900 / 월)", "연간 구독 (₩119,000 / 년 - 33% 할인)"])
+    plan_choice = st.radio(
+        "요금제 선택",
+        [
+            "⚡ Lite 플랜 (₩9,800 / 월) - 3,000회 시뮬레이션",
+            "👑 Pro 플랜 (₩39,000 / 월) - 10,000회 시뮬레이션 + 고속 분석"
+        ]
+    )
     
     st.text_input("💳 카드 번호", placeholder="0000 - 0000 - 0000 - 0000")
     col_c1, col_c2 = st.columns(2)
@@ -133,18 +143,22 @@ def show_pro_buy_dialog():
         st.text_input("CVC", placeholder="3자리 숫자")
         
     st.markdown("---")
-    if st.button("🚀 결제 완료 및 Pro 활성화", use_container_width=True, type="primary"):
-        st.session_state['is_pro_user'] = True
-        st.success("🎉 결제가 정상 처리되었습니다! Pro 기능이 활성화되었습니다.")
+    if st.button("🚀 결제 완료 및 구독 시작", use_container_width=True, type="primary"):
+        if "Lite" in plan_choice:
+            st.session_state['user_plan'] = "Lite"
+            st.success("🎉 Lite 플랜 구독이 시작되었습니다!")
+        else:
+            st.session_state['user_plan'] = "Pro"
+            st.success("🎉 Pro 플랜 구독이 시작되었습니다!")
+        st.session_state['trial_end_date'] = None
         st.rerun()
 
 # ====================================================
-# 👈 사이드바 최상단: 제목, 설명 및 구매 창
+# 👈 사이드바 구성
 # ====================================================
 selected_lang = st.sidebar.selectbox("🌐 Language", ["한국어", "English"], index=0)
 L = LANG_DICT.get(selected_lang, LANG_DICT["한국어"])
 
-# [수정] 사이드바 최상단 브랜드 제목 및 설명
 st.sidebar.markdown(f'<p class="sidebar-header">🧪 {L["title"]}</p>', unsafe_allow_html=True)
 st.sidebar.markdown(f'<p class="sidebar-subheader">{L["subtitle"]}</p>', unsafe_allow_html=True)
 st.sidebar.markdown("---")
@@ -154,30 +168,53 @@ curr_choice = st.sidebar.selectbox(L['currency_select'], ["KRW (₩)", "USD ($)"
 curr_key = curr_choice.split(" ")[0]
 fx_rate, curr_symbol = rates[curr_key]
 
-# [수정] 프로 구매 카드 및 상태 표시
-is_pro = st.session_state['is_pro_user']
+# 멤버십 플랜 상태 표출 및 변경 영역
+current_plan = st.session_state['user_plan']
 
-if not is_pro:
+st.sidebar.markdown("##### 👤 나의 멤버십 현황")
+if current_plan == "Free":
+    st.sidebar.markdown('현재 이용 플랜: <span class="badge-free">Free (1,000회)</span>', unsafe_allow_html=True)
+    
     st.sidebar.markdown("""
-    <div class="pro-buy-card">
-        <div style="font-weight: 800; color: #A855F7; font-size: 0.95rem;">👑 StockLab Pro 멤버십</div>
-        <div style="font-size: 0.8rem; color: #CBD5E1; margin-top: 5px; margin-bottom: 10px;">
-            • <b>최대 10,000회</b> 몬테카를로 예측 시뮬레이션<br>
-            • 고급 퀀트 리스크 리포트 산출<br>
-            • 실시간 스마트 매매 알고리즘 신호
+    <div class="plan-card">
+        <div style="font-weight: 800; color: #38BDF8; font-size: 0.9rem;">🎁 2주 무료 체험 혜택</div>
+        <div style="font-size: 0.78rem; color: #CBD5E1; margin-top: 4px;">
+            지금 신청 시 <b>14일간 Pro 모드 (10,000회 시뮬레이션)</b>를 조건 없이 무료로 이용할 수 있습니다.
         </div>
     </div>
     """, unsafe_allow_html=True)
     
-    if st.sidebar.button("💳 Pro 멤버십 구매하기", use_container_width=True, type="primary"):
-        show_pro_buy_dialog()
-else:
-    st.sidebar.success("👑 Pro 플랜 이용 중")
-    if st.sidebar.button("Free 모드로 전환", use_container_width=True):
-        st.session_state['is_pro_user'] = False
+    if st.sidebar.button("🎁 Pro 2주 무료 체험 시작", use_container_width=True):
+        st.session_state['user_plan'] = "Pro"
+        st.session_state['trial_end_date'] = datetime.today() + timedelta(days=14)
+        st.success("🎉 2주 무료 체험이 시작되었습니다!")
+        st.rerun()
+        
+    if st.sidebar.button("💳 유료 멤버십 결제하기", use_container_width=True, type="primary"):
+        show_buy_dialog()
+
+elif current_plan == "Lite":
+    st.sidebar.markdown('현재 이용 플랜: <span class="badge-lite">Lite (3,000회)</span>', unsafe_allow_html=True)
+    st.sidebar.write("월 ₩9,800 구독 중")
+    if st.sidebar.button("👑 Pro로 업그레이드", use_container_width=True, type="primary"):
+        show_buy_dialog()
+    if st.sidebar.button("Free 모드로 변경", use_container_width=True):
+        st.session_state['user_plan'] = "Free"
         st.rerun()
 
-st.sidebar.markdown("📌 **버전 정보**: `v1.2.0 (Release)`")
+elif current_plan == "Pro":
+    st.sidebar.markdown('현재 이용 플랜: <span class="badge-pro">👑 Pro (10,000회)</span>', unsafe_allow_html=True)
+    if st.session_state['trial_end_date']:
+        remaining = (st.session_state['trial_end_date'] - datetime.today()).days + 1
+        st.sidebar.info(f"⏳ 2주 무료 체험 중 (남은 기간: {remaining}일)")
+    
+    if st.sidebar.button("플랜 변경 / 해지", use_container_width=True):
+        st.session_state['user_plan'] = "Free"
+        st.session_state['trial_end_date'] = None
+        st.rerun()
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("📌 **버전 정보**: `v1.3.0 (3-Tier Plan)`")
 
 # ====================================================
 # 메인 화면 영역
@@ -206,10 +243,12 @@ with st.spinner(f"'{current_ticker}' 시세 데이터 로딩 중..."):
 
 col_m1, col_m2 = st.columns([4, 1])
 with col_m2:
-    if is_pro:
-        st.markdown('<div style="text-align:right;"><span class="pro-tag">👑 Pro Plan</span></div>', unsafe_allow_html=True)
+    if current_plan == "Pro":
+        st.markdown('<div style="text-align:right;"><span class="badge-pro">👑 Pro Plan</span></div>', unsafe_allow_html=True)
+    elif current_plan == "Lite":
+        st.markdown('<div style="text-align:right;"><span class="badge-lite">Lite Plan</span></div>', unsafe_allow_html=True)
     else:
-        st.markdown('<div style="text-align:right;"><span class="version-tag">Free Plan</span></div>', unsafe_allow_html=True)
+        st.markdown('<div style="text-align:right;"><span class="badge-free">Free Plan</span></div>', unsafe_allow_html=True)
 
 # 탭 구성
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
@@ -442,36 +481,37 @@ with tab4:
             st.plotly_chart(fig_dist, use_container_width=True)
 
 # ----------------------------------------------------
-# 🎲 [요청 2] TAB 5: 몬테카를로 시뮬레이션 (1,000회 / Pro 10,000회) 복구
+# 🎲 TAB 5: 몬테카를로 시뮬레이션 (플랜별 1k / 3k / 10k 차등)
 # ----------------------------------------------------
 with tab5:
-    st.markdown(f'<div class="guide-box">💡 <b>몬테카를로 확률 예측</b>: 과거 주가 변동성(기하 브라운 운동, GBM)을 기반으로 미래 <b>N가지 주가 경로 시뮬레이션</b>을 수행합니다.</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="guide-box">💡 <b>몬테카를로 확률 예측</b>: 기하 브라운 운동(GBM) 기반의 <b>미래 주가 시뮬레이션</b>을 실행합니다.</div>', unsafe_allow_html=True)
     
     if ticker_df is not None and not ticker_df.empty and len(ticker_df) > 30:
         df_mc = ticker_df.copy()
         last_price = df_mc['Close'].iloc[-1]
         
-        # 일간 변동성 및 기대수익률 산출
         log_returns = np.log(df_mc['Close'] / df_mc['Close'].shift(1)).dropna()
         u = log_returns.mean()
         var = log_returns.var()
         drift = u - (0.5 * var)
         stdev = log_returns.std()
         
-        # 시뮬레이션 옵션
         col_ctrl1, col_ctrl2 = st.columns([1, 2])
         with col_ctrl1:
             pred_days = st.slider("📆 미래 예측 기간 (일수)", min_value=30, max_value=252, value=90, step=30)
             
-            # 시뮬레이션 횟수 제한 (Free: 1,000회 고정 / Pro: 최대 10,000회 선택)
-            if is_pro:
-                num_simulations = st.slider("🎲 몬테카를로 시뮬레이션 횟수 (Pro)", min_value=1000, max_value=10000, value=5000, step=1000)
-                st.caption("👑 Pro 사용자: 최대 10,000회 정밀 시뮬레이션 사용 중")
-            else:
+            # 플랜별 시뮬레이션 횟수 결정
+            if current_plan == "Free":
                 num_simulations = 1000
-                st.info("💡 Free 플랜: **1,000회** 시뮬레이션을 실행합니다. (Pro 업그레이드 시 10,000회 지원)")
+                st.info("💡 **Free 플랜**: 1,000회 시뮬레이션을 수행합니다.")
+            elif current_plan == "Lite":
+                num_simulations = 3000
+                st.success("⚡ **Lite 플랜**: 3,000회 시뮬레이션을 수행합니다.")
+            else: # Pro
+                num_simulations = st.slider("🎲 몬테카를로 횟수 (Pro)", min_value=3000, max_value=10000, value=10000, step=1000)
+                st.markdown('<span class="badge-pro">👑 Pro 플랜: 최대 10,000회 정밀 시뮬레이션 가능</span>', unsafe_allow_html=True)
 
-        # 몬테카를로 시뮬레이션 연산
+        # 연산 실행
         np.random.seed(42)
         daily_returns = np.exp(drift + stdev * np.random.normal(0, 1, (pred_days, num_simulations)))
         
@@ -480,7 +520,6 @@ with tab5:
         for t in range(1, pred_days):
             price_list[t] = price_list[t - 1] * daily_returns[t]
             
-        # 통계 산출
         final_prices = price_list[-1]
         p_10 = np.percentile(final_prices, 10)
         p_25 = np.percentile(final_prices, 25)
@@ -488,7 +527,6 @@ with tab5:
         p_75 = np.percentile(final_prices, 75)
         p_90 = np.percentile(final_prices, 90)
 
-        # 요약 메트릭 출력
         p_scale = fx_rate if not current_ticker.endswith(".KS") else 1.0
         
         m1, m2, m3, m4, m5 = st.columns(5)
@@ -500,13 +538,11 @@ with tab5:
 
         st.markdown("---")
         
-        # 차트 시각화
         col_c1, col_c2 = st.columns([2, 1])
         with col_c1:
             st.markdown(f"##### 🎲 {num_simulations:,}개 경로 시뮬레이션 시각화 ({pred_days}일 후)")
             fig_mc = go.Figure()
             
-            # 시각적 가독성을 위해 일부 경로(최대 100개)만 표출
             sample_paths = price_list[:, :min(100, num_simulations)]
             for i in range(sample_paths.shape[1]):
                 fig_mc.add_trace(go.Scatter(
@@ -516,7 +552,6 @@ with tab5:
                     showlegend=False
                 ))
                 
-            # 중앙값 및 주요 백분위 라인 강조
             fig_mc.add_trace(go.Scatter(y=np.percentile(price_list, 90, axis=1) * p_scale, name="상위 10%", line=dict(color='#10B981', width=2)))
             fig_mc.add_trace(go.Scatter(y=np.median(price_list, axis=1) * p_scale, name="중앙값 (50%)", line=dict(color='#F59E0B', width=2.5)))
             fig_mc.add_trace(go.Scatter(y=np.percentile(price_list, 10, axis=1) * p_scale, name="하위 10%", line=dict(color='#EF4444', width=2)))
