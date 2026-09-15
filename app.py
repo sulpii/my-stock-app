@@ -214,7 +214,7 @@ elif current_plan == "Pro":
         st.rerun()
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("📌 **버전 정보**: `v1.3.0 (3-Tier Plan)`")
+st.sidebar.caption("ⓒ StockLab All Rights Reserved.")
 
 # ====================================================
 # 메인 화면 영역
@@ -263,255 +263,183 @@ c_krw = rates["KRW"][0]
 disp_scale = (fx_rate / c_krw) if curr_key != "KRW" else 1.0
 
 # ----------------------------------------------------
-# TAB 1: 모의투자 및 보유 자산
+# 💵 TAB 1: 모의투자 & 자산 현황
 # ----------------------------------------------------
 with tab1:
     st.markdown('<div class="guide-box">💡 <b>가상 모의투자</b>: 초기 자산 1억 원으로 실시간 주식을 거래하고 포트폴리오를 관리해보세요.</div>', unsafe_allow_html=True)
     
-    eval_stock_val = 0.0
-    portfolio_rows = []
-    
-    for t, holdings in st.session_state['portfolio'].items():
-        qty = holdings['qty']
-        if qty > 0:
-            t_data = fetch_single_ticker_data(t, str(today - timedelta(days=5)), str(today))
-            if t_data is not None and not t_data.empty:
-                last_p = t_data['Close'].iloc[-1]
-                p_krw = last_p if t.endswith(".KS") else last_p * c_krw
-                current_val = p_krw * qty
-                eval_stock_val += current_val
-                
-                avg_p = holdings['avg_price']
-                profit_krw = (p_krw - avg_p) * qty
-                profit_rate = ((p_krw - avg_p) / avg_p) * 100 if avg_p > 0 else 0
-                
-                portfolio_rows.append({
-                    "종목": t,
-                    "보유수량": f"{qty:,}주",
-                    "평균단가": f"{curr_symbol}{avg_p * disp_scale:,.0f}",
-                    "현재가": f"{curr_symbol}{p_krw * disp_scale:,.0f}",
-                    "평가금액": f"{curr_symbol}{current_val * disp_scale:,.0f}",
-                    "평가손익": f"{curr_symbol}{profit_krw * disp_scale:,.0f} ({profit_rate:+.2f}%)"
-                })
-
-    total_asset_krw = st.session_state['cash'] + eval_stock_val
-    
-    k1, k2, k3, k4 = st.columns([1.3, 1.3, 1.3, 0.9])
-    k1.metric("💰 총 자산", f"{curr_symbol}{total_asset_krw * disp_scale:,.0f}")
-    k2.metric("💳 보유 현금", f"{curr_symbol}{st.session_state['cash'] * disp_scale:,.0f}")
-    k3.metric("🏢 주식 평가액", f"{curr_symbol}{eval_stock_val * disp_scale:,.0f}")
-    with k4:
-        st.write("")
-        if st.button("🔄 잔고 초기화", use_container_width=True):
-            st.session_state['cash'] = INIT_CASH
-            st.session_state['portfolio'] = {}
-            st.success("자산이 초기화되었습니다.")
-            st.rerun()
-
-    st.markdown("---")
-    
-    col_trade, col_hold = st.columns([1, 1])
-    with col_trade:
-        st.markdown(f"##### 🛒 주문 실행 ({current_ticker})")
-        if ticker_df is not None and not ticker_df.empty:
-            curr_p_raw = ticker_df['Close'].iloc[-1]
-            curr_p_krw = curr_p_raw if current_ticker.endswith(".KS") else curr_p_raw * c_krw
-            st.write(f"현재 실시간가: **{curr_symbol}{curr_p_krw * disp_scale:,.0f}**")
-            
-            st.caption("⚡ 빠른 매수 비율 선택")
-            b_c1, b_c2, b_c3 = st.columns(3)
-            calc_qty = 1
-            if b_c1.button("25% 매수"):
-                calc_qty = max(1, int((st.session_state['cash'] * 0.25) // curr_p_krw))
-            if b_c2.button("50% 매수"):
-                calc_qty = max(1, int((st.session_state['cash'] * 0.50) // curr_p_krw))
-            if b_c3.button("MAX (100%)"):
-                calc_qty = max(1, int(st.session_state['cash'] // curr_p_krw))
-
-            tb1, tb2 = st.columns(2)
-            with tb1:
-                buy_qty = st.number_input("매수 수량", min_value=1, value=calc_qty, key="b_q")
-                if st.button(f"🟢 {L['buy_btn']}", use_container_width=True):
-                    cost = curr_p_krw * buy_qty
-                    if st.session_state['cash'] >= cost:
-                        st.session_state['cash'] -= cost
-                        old_info = st.session_state['portfolio'].get(current_ticker, {'qty': 0, 'avg_price': 0})
-                        new_qty = old_info['qty'] + buy_qty
-                        new_avg = ((old_info['qty'] * old_info['avg_price']) + cost) / new_qty
-                        st.session_state['portfolio'][current_ticker] = {'qty': new_qty, 'avg_price': new_avg}
-                        st.success(f"{current_ticker} {buy_qty}주 매수 완료!")
-                        st.rerun()
-                    else:
-                        st.error("보유 현금이 부족합니다.")
-            
-            with tb2:
-                sell_qty = st.number_input("매도 수량", min_value=1, value=1, key="s_q")
-                if st.button(f"🔴 {L['sell_btn']}", use_container_width=True):
-                    old_info = st.session_state['portfolio'].get(current_ticker, {'qty': 0, 'avg_price': 0})
-                    if old_info['qty'] >= sell_qty:
-                        st.session_state['cash'] += curr_p_krw * sell_qty
-                        old_info['qty'] -= sell_qty
-                        st.session_state['portfolio'][current_ticker] = old_info
-                        st.success(f"{current_ticker} {sell_qty}주 매도 완료!")
-                        st.rerun()
-                    else:
-                        st.error("보유 수량이 부족합니다.")
+    if ticker_df is not None and not ticker_df.empty:
+        curr_price_raw = ticker_df['Close'].iloc[-1]
+        
+        # 한국 주식(.KS, .KQ)은 원화 기준, 해외주식은 USD 기준 환율 적용
+        if current_ticker.endswith(".KS") or current_ticker.endswith(".KQ"):
+            curr_price_disp = curr_price_raw * disp_scale
         else:
-            st.warning("데이터를 불러올 수 없습니다.")
+            curr_price_disp = curr_price_raw * (rates["KRW"][0] if curr_key == "KRW" else fx_rate)
 
-    with col_hold:
-        st.markdown("##### 📋 내 보유 종목 현황")
-        if portfolio_rows:
-            st.dataframe(pd.DataFrame(portfolio_rows), use_container_width=True, hide_index=True)
+        st.markdown(f"#### 📌 {current_ticker} 현재가: **{curr_symbol}{curr_price_disp:,.2f}**")
+        
+        col_t1, col_t2 = st.columns(2)
+        with col_t1:
+            trade_qty = st.number_input("매수/매도 수량", min_value=1, value=10, step=1)
+            buy_btn = st.button(f"🟢 {L['buy_btn']}", use_container_width=True)
+        with col_t2:
+            st.write("") # 높이 맞춤용
+            st.write("")
+            sell_btn = st.button(f"🔴 {L['sell_btn']}", use_container_width=True)
+            
+        if buy_btn:
+            total_cost = curr_price_disp * trade_qty
+            if st.session_state['cash'] >= total_cost:
+                st.session_state['cash'] -= total_cost
+                if current_ticker in st.session_state['portfolio']:
+                    prev_qty, prev_avg = st.session_state['portfolio'][current_ticker]
+                    new_qty = prev_qty + trade_qty
+                    new_avg = ((prev_qty * prev_avg) + total_cost) / new_qty
+                    st.session_state['portfolio'][current_ticker] = (new_qty, new_avg)
+                else:
+                    st.session_state['portfolio'][current_ticker] = (trade_qty, curr_price_disp)
+                st.success(f"{current_ticker} {trade_qty}주 매수 완료!")
+                st.rerun()
+            else:
+                st.error("현금이 부족합니다!")
+
+        if sell_btn:
+            if current_ticker in st.session_state['portfolio'] and st.session_state['portfolio'][current_ticker][0] >= trade_qty:
+                prev_qty, prev_avg = st.session_state['portfolio'][current_ticker]
+                st.session_state['cash'] += curr_price_disp * trade_qty
+                if prev_qty == trade_qty:
+                    del st.session_state['portfolio'][current_ticker]
+                else:
+                    st.session_state['portfolio'][current_ticker] = (prev_qty - trade_qty, prev_avg)
+                st.success(f"{current_ticker} {trade_qty}주 매도 완료!")
+                st.rerun()
+            else:
+                st.error("보유 수량이 부족합니다!")
+
+        st.markdown("---")
+        st.markdown("##### 💼 나의 보유 자산 현황")
+        st.metric("보유 현금", f"{curr_symbol}{st.session_state['cash'] * disp_scale:,.0f}")
+        
+        if st.session_state['portfolio']:
+            port_data = []
+            for t, (q, avg_p) in st.session_state['portfolio'].items():
+                port_data.append({"종목": t, "보유수량": q, "평균단가": f"{curr_symbol}{avg_p:,.2f}"})
+            st.table(pd.DataFrame(port_data))
         else:
-            st.info("보유 중인 주식이 없습니다.")
+            st.info("현재 보유 중인 주식이 없습니다.")
+    else:
+        st.error("주가 데이터를 불러올 수 없습니다.")
 
 # ----------------------------------------------------
-# TAB 2: 포트폴리오 계산기
+# 🧮 TAB 2: 포트폴리오 계산기
 # ----------------------------------------------------
 with tab2:
     st.markdown('<div class="guide-box">💡 <b>비중 분석</b>: 자산 비중을 조정하며 포트폴리오 구성을 검토하세요.</div>', unsafe_allow_html=True)
-    sample_tickers = ["AAPL", "NVDA", "TSLA", "005930.KS"]
-    weights = []
     
-    col_w, col_pie = st.columns([1, 1])
-    with col_w:
-        st.markdown("##### ⚙️ 비중 설정 (%)")
-        for t in sample_tickers:
-            w = st.slider(f"{t} 비중", 0, 100, 25, step=5)
-            weights.append(w)
-            
-    with col_pie:
-        if sum(weights) > 0:
-            fig_pie = go.Figure(data=[go.Pie(labels=sample_tickers, values=weights, hole=.4)])
-            fig_pie.update_layout(
-                template="plotly_dark",
-                paper_bgcolor="rgba(0,0,0,0)",
-                showlegend=True,
-                height=280,
-                margin=dict(l=10, r=10, t=10, b=10)
-            )
-            st.plotly_chart(fig_pie, use_container_width=True)
+    st.markdown("##### 📐 자산 비중 시뮬레이터")
+    col_p1, col_p2 = st.columns(2)
+    with col_p1:
+        w_stock = st.slider("주식 비중 (%)", 0, 100, 70)
+    with col_p2:
+        w_bond = 100 - w_stock
+        st.slider("채권 비중 (%)", 0, 100, w_bond, disabled=True)
+        
+    fig_pie = px.pie(
+        names=["주식", "채권"], 
+        values=[w_stock, w_bond], 
+        hole=0.4,
+        color_discrete_sequence=['#38BDF8', '#6366F1']
+    )
+    fig_pie.update_layout(template="plotly_dark", height=300)
+    st.plotly_chart(fig_pie, use_container_width=True)
 
 # ----------------------------------------------------
-# TAB 3: 기술적 분석
+# 📈 TAB 3: 기술적 분석 차트
 # ----------------------------------------------------
 with tab3:
     st.markdown(f'<div class="guide-box">💡 <b>기술적 차트</b>: {current_ticker} 종목의 이동평균선과 거래량을 분석합니다.</div>', unsafe_allow_html=True)
+    
     if ticker_df is not None and not ticker_df.empty:
-        df_t = ticker_df.copy()
-        df_t['MA20'] = df_t['Close'].rolling(20).mean()
-        df_t['MA60'] = df_t['Close'].rolling(60).mean()
-
-        fig_candle = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03, row_heights=[0.7, 0.3])
-        fig_candle.add_trace(go.Candlestick(
-            x=df_t.index, open=df_t['Open']*fx_rate, high=df_t['High']*fx_rate,
-            low=df_t['Low']*fx_rate, close=df_t['Close']*fx_rate, name="주가"
+        df_chart = ticker_df.copy()
+        df_chart['MA20'] = df_chart['Close'].rolling(20).mean()
+        df_chart['MA60'] = df_chart['Close'].rolling(60).mean()
+        
+        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03, row_heights=[0.7, 0.3])
+        
+        fig.add_trace(go.Candlestick(
+            x=df_chart.index,
+            open=df_chart['Open'], high=df_chart['High'],
+            low=df_chart['Low'], close=df_chart['Close'], name="주가"
         ), row=1, col=1)
-        fig_candle.add_trace(go.Scatter(x=df_t.index, y=df_t['MA20']*fx_rate, name="20일선", line=dict(color='#F59E0B', width=1)), row=1, col=1)
-        fig_candle.add_trace(go.Scatter(x=df_t.index, y=df_t['MA60']*fx_rate, name="60일선", line=dict(color='#6366F1', width=1)), row=1, col=1)
-
-        colors = ['#EF4444' if row['Open'] > row['Close'] else '#10B981' for _, row in df_t.iterrows()]
-        fig_candle.add_trace(go.Bar(x=df_t.index, y=df_t['Volume'], name="거래량", marker_color=colors), row=2, col=1)
-
-        fig_candle.update_layout(
-            template="plotly_dark",
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            xaxis_rangeslider_visible=False,
-            height=450,
-            margin=dict(l=10, r=10, t=10, b=10)
-        )
-        st.plotly_chart(fig_candle, use_container_width=True)
+        
+        fig.add_trace(go.Scatter(x=df_chart.index, y=df_chart['MA20'], name="20일 이평선", line=dict(color='#F59E0B', width=1)), row=1, col=1)
+        fig.add_trace(go.Scatter(x=df_chart.index, y=df_chart['MA60'], name="60일 이평선", line=dict(color='#10B981', width=1)), row=1, col=1)
+        
+        fig.add_trace(go.Bar(x=df_chart.index, y=df_chart['Volume'], name="거래량", marker_color='#6366F1'), row=2, col=1)
+        
+        fig.update_layout(template="plotly_dark", height=450, margin=dict(l=10, r=10, t=10, b=10), xaxis_rangeslider_visible=False)
+        st.plotly_chart(fig, use_container_width=True)
 
 # ----------------------------------------------------
-# TAB 4: 퀀트 & 리스크 분석
+# 📊 TAB 4: 퀀트 & 리스크 분석
 # ----------------------------------------------------
 with tab4:
     st.markdown(f'<div class="guide-box">💡 <b>퀀트 리스크 분석</b>: 최근 1년 변동성, 샤프 지수, 최대 낙폭(MDD)을 산출합니다.</div>', unsafe_allow_html=True)
     
-    if ticker_df is not None and not ticker_df.empty and len(ticker_df) > 20:
-        df_risk = ticker_df.copy()
-        df_risk['Daily_Return'] = df_risk['Close'].pct_change()
+    if ticker_df is not None and not ticker_df.empty:
+        daily_ret = ticker_df['Close'].pct_change().dropna()
+        volatility = daily_ret.std() * np.sqrt(252) * 100
+        sharpe = (daily_ret.mean() * 252) / (daily_ret.std() * np.sqrt(252)) if daily_ret.std() != 0 else 0
         
-        annual_return = df_risk['Daily_Return'].mean() * 252 * 100
-        annual_volatility = df_risk['Daily_Return'].std() * np.sqrt(252) * 100
-        risk_free_rate = 3.5
-        sharpe_ratio = (annual_return - risk_free_rate) / annual_volatility if annual_volatility != 0 else 0
+        cum_ret = (1 + daily_ret).cumprod()
+        peak = cum_ret.cummax()
+        mdd = ((cum_ret - peak) / peak).min() * 100
         
-        df_risk['Cum_Max'] = df_risk['Close'].cummax()
-        df_risk['Drawdown'] = (df_risk['Close'] - df_risk['Cum_Max']) / df_risk['Cum_Max'] * 100
-        mdd = df_risk['Drawdown'].min()
-        
-        r1, r2, r3, r4 = st.columns(4)
-        r1.metric("📈 연간 예상 수익률", f"{annual_return:+.2f}%")
-        r2.metric("⚡ 연간 변동성", f"{annual_volatility:.2f}%")
-        r3.metric("🎯 샤프 지수", f"{sharpe_ratio:.2f}")
-        r4.metric("📉 최대 낙폭 (MDD)", f"{mdd:.2f}%")
-        
-        st.markdown("---")
-        col_mdd, col_dist = st.columns([1, 1])
-        with col_mdd:
-            st.markdown("##### 📉 고점 대비 낙폭(Drawdown) 추이")
-            fig_dd = go.Figure()
-            fig_dd.add_trace(go.Scatter(
-                x=df_risk.index, y=df_risk['Drawdown'],
-                fill='tozeroy', fillcolor='rgba(239, 68, 68, 0.3)',
-                line=dict(color='#EF4444', width=1.5), name="낙폭 (%)"
-            ))
-            fig_dd.update_layout(
-                template="plotly_dark",
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)",
-                height=280,
-                margin=dict(l=10, r=10, t=20, b=10)
-            )
-            st.plotly_chart(fig_dd, use_container_width=True)
-            
-        with col_dist:
-            st.markdown("##### 📊 일간 수익률 분포")
-            fig_dist = px.histogram(df_risk.dropna(), x="Daily_Return", nbins=40, color_discrete_sequence=['#38BDF8'])
-            fig_dist.update_layout(
-                template="plotly_dark",
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)",
-                height=280,
-                margin=dict(l=10, r=10, t=20, b=10)
-            )
-            st.plotly_chart(fig_dist, use_container_width=True)
+        q1, q2, q3 = st.columns(3)
+        q1.metric("연 변동성", f"{volatility:.2f}%")
+        q2.metric("샤프 지수", f"{sharpe:.2f}")
+        q3.metric("최대 낙폭 (MDD)", f"{mdd:.2f}%")
 
 # ----------------------------------------------------
-# 🎲 TAB 5: 몬테카를로 시뮬레이션 (플랜별 1k / 3k / 10k 차등)
+# 🎯 TAB 5: 몬테카를로 AI 예측 (종목/예산/목표 설정 포함)
 # ----------------------------------------------------
 with tab5:
-    st.markdown(f'<div class="guide-box">💡 <b>몬테카를로 확률 예측</b>: 기하 브라운 운동(GBM) 기반의 <b>미래 주가 시뮬레이션</b>을 실행합니다.</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="guide-box">💡 <b>몬테카를로 예산 기반 예측</b>: 종목과 투자 예산(원금)을 설정하면 미래 자산 가치와 수익/손실 확률을 시뮬레이션합니다.</div>', unsafe_allow_html=True)
     
     if ticker_df is not None and not ticker_df.empty and len(ticker_df) > 30:
         df_mc = ticker_df.copy()
         last_price = df_mc['Close'].iloc[-1]
         
+        # ⚙️ 종목 / 예산 / 기간 설정 박스
+        st.markdown("##### ⚙️ 시뮬레이션 조건 및 예산 설정")
+        col_m1, col_m2, col_m3 = st.columns([1.5, 1.5, 1])
+        
+        with col_m1:
+            init_budget = st.number_input("💰 투자 예산 (원금)", min_value=100000, value=10000000, step=1000000, format="%d")
+            st.caption(f"선택 종목: **{current_ticker}** (현재가: {last_price:,.2f})")
+            
+        with col_m2:
+            pred_days = st.slider("📆 미래 예측 기간 (일수)", min_value=30, max_value=252, value=90, step=30)
+            
+        with col_m3:
+            # 플랜별 시뮬레이션 횟수
+            if current_plan == "Free":
+                num_simulations = 1000
+                st.info("💡 **Free**: 1,000회")
+            elif current_plan == "Lite":
+                num_simulations = 3000
+                st.success("⚡ **Lite**: 3,000회")
+            else:
+                num_simulations = st.slider("🎲 횟수 (Pro)", min_value=3000, max_value=10000, value=10000, step=1000)
+
+        # 연산 실행
         log_returns = np.log(df_mc['Close'] / df_mc['Close'].shift(1)).dropna()
         u = log_returns.mean()
         var = log_returns.var()
         drift = u - (0.5 * var)
         stdev = log_returns.std()
         
-        col_ctrl1, col_ctrl2 = st.columns([1, 2])
-        with col_ctrl1:
-            pred_days = st.slider("📆 미래 예측 기간 (일수)", min_value=30, max_value=252, value=90, step=30)
-            
-            # 플랜별 시뮬레이션 횟수 결정
-            if current_plan == "Free":
-                num_simulations = 1000
-                st.info("💡 **Free 플랜**: 1,000회 시뮬레이션을 수행합니다.")
-            elif current_plan == "Lite":
-                num_simulations = 3000
-                st.success("⚡ **Lite 플랜**: 3,000회 시뮬레이션을 수행합니다.")
-            else: # Pro
-                num_simulations = st.slider("🎲 몬테카를로 횟수 (Pro)", min_value=3000, max_value=10000, value=10000, step=1000)
-                st.markdown('<span class="badge-pro">👑 Pro 플랜: 최대 10,000회 정밀 시뮬레이션 가능</span>', unsafe_allow_html=True)
-
-        # 연산 실행
         np.random.seed(42)
         daily_returns = np.exp(drift + stdev * np.random.normal(0, 1, (pred_days, num_simulations)))
         
@@ -521,40 +449,51 @@ with tab5:
             price_list[t] = price_list[t - 1] * daily_returns[t]
             
         final_prices = price_list[-1]
-        p_10 = np.percentile(final_prices, 10)
-        p_25 = np.percentile(final_prices, 25)
-        p_50 = np.median(final_prices)
-        p_75 = np.percentile(final_prices, 75)
-        p_90 = np.percentile(final_prices, 90)
-
-        p_scale = fx_rate if not current_ticker.endswith(".KS") else 1.0
         
-        m1, m2, m3, m4, m5 = st.columns(5)
-        m1.metric("🔥 상위 10% (Best)", f"{curr_symbol}{p_90 * p_scale:,.0f}", f"{((p_90 - last_price)/last_price)*100:+.1f}%")
-        m2.metric("📈 상위 25%", f"{curr_symbol}{p_75 * p_scale:,.0f}", f"{((p_75 - last_price)/last_price)*100:+.1f}%")
-        m3.metric("🎯 중앙값 (Expected)", f"{curr_symbol}{p_50 * p_scale:,.0f}", f"{((p_50 - last_price)/last_price)*100:+.1f}%")
-        m4.metric("📉 하위 25%", f"{curr_symbol}{p_25 * p_scale:,.0f}", f"{((p_25 - last_price)/last_price)*100:+.1f}%")
-        m5.metric("❄️ 하위 10% (Worst)", f"{curr_symbol}{p_10 * p_scale:,.0f}", f"{((p_10 - last_price)/last_price)*100:+.1f}%")
+        # 주가 수익률 계산 -> 예산 기반 자산 가치 계산
+        return_rates = (final_prices - last_price) / last_price
+        final_assets = init_budget * (1 + return_rates)
+        
+        a_10 = np.percentile(final_assets, 10)
+        a_50 = np.median(final_assets)
+        a_90 = np.percentile(final_assets, 90)
+        
+        profit_prob = (return_rates > 0).sum() / num_simulations * 100
 
         st.markdown("---")
         
+        # 예산 기준 결과 리포트
+        st.markdown(f"##### 📊 {init_budget:,.0f}원 투자 시 {pred_days}일 후 예상 자산 평가")
+        
+        r1, r2, r3, r4 = st.columns(4)
+        r1.metric("🎯 예상 자산 (중앙값)", f"₩{a_50:,.0f}", f"{((a_50 - init_budget)/init_budget)*100:+.1f}%")
+        r2.metric("🚀 상위 10% (Best)", f"₩{a_90:,.0f}", f"{((a_90 - init_budget)/init_budget)*100:+.1f}%")
+        r3.metric("❄️ 하위 10% (Worst)", f"₩{a_10:,.0f}", f"{((a_10 - init_budget)/init_budget)*100:+.1f}%")
+        r4.metric("📈 원금 보존/수익 확률", f"{profit_prob:.1f}%")
+
+        st.markdown("---")
+        
+        # 차트 시각화 (자산 기반 경로)
         col_c1, col_c2 = st.columns([2, 1])
         with col_c1:
-            st.markdown(f"##### 🎲 {num_simulations:,}개 경로 시뮬레이션 시각화 ({pred_days}일 후)")
+            st.markdown(f"##### 🎲 자산 평가액 추이 시뮬레이션 ({num_simulations:,}회)")
             fig_mc = go.Figure()
             
-            sample_paths = price_list[:, :min(100, num_simulations)]
+            # 주가 경로를 예산으로 환산
+            asset_paths = (price_list / last_price) * init_budget
+            sample_paths = asset_paths[:, :min(100, num_simulations)]
+            
             for i in range(sample_paths.shape[1]):
                 fig_mc.add_trace(go.Scatter(
-                    y=sample_paths[:, i] * p_scale, 
+                    y=sample_paths[:, i], 
                     mode='lines', 
-                    line=dict(width=0.6, color='rgba(56, 189, 248, 0.15)'), 
+                    line=dict(width=0.6, color='rgba(56, 189, 248, 0.12)'), 
                     showlegend=False
                 ))
                 
-            fig_mc.add_trace(go.Scatter(y=np.percentile(price_list, 90, axis=1) * p_scale, name="상위 10%", line=dict(color='#10B981', width=2)))
-            fig_mc.add_trace(go.Scatter(y=np.median(price_list, axis=1) * p_scale, name="중앙값 (50%)", line=dict(color='#F59E0B', width=2.5)))
-            fig_mc.add_trace(go.Scatter(y=np.percentile(price_list, 10, axis=1) * p_scale, name="하위 10%", line=dict(color='#EF4444', width=2)))
+            fig_mc.add_trace(go.Scatter(y=np.percentile(asset_paths, 90, axis=1), name="상위 10%", line=dict(color='#10B981', width=2)))
+            fig_mc.add_trace(go.Scatter(y=np.median(asset_paths, axis=1), name="중앙값 (50%)", line=dict(color='#F59E0B', width=2.5)))
+            fig_mc.add_trace(go.Scatter(y=np.percentile(asset_paths, 10, axis=1), name="하위 10%", line=dict(color='#EF4444', width=2)))
 
             fig_mc.update_layout(
                 template="plotly_dark",
@@ -563,16 +502,16 @@ with tab5:
                 height=380,
                 margin=dict(l=10, r=10, t=10, b=10),
                 xaxis=dict(title="경과 일수 (Day)"),
-                yaxis=dict(title=f"예상 주가 ({curr_symbol})")
+                yaxis=dict(title="예상 자산 평가액 (₩)")
             )
             st.plotly_chart(fig_mc, use_container_width=True)
 
         with col_c2:
-            st.markdown("##### 📊 최종 도달 주가 분포")
+            st.markdown("##### 📊 최종 예상 자산 분포")
             fig_hist = px.histogram(
-                x=final_prices * p_scale, nbins=50, 
+                x=final_assets, nbins=50, 
                 color_discrete_sequence=['#A855F7'],
-                labels={'x': f'최종 주가 ({curr_symbol})'}
+                labels={'x': '최종 자산 (₩)'}
             )
             fig_hist.update_layout(
                 template="plotly_dark",
@@ -586,6 +525,3 @@ with tab5:
 
     else:
         st.warning("몬테카를로 시뮬레이션을 수행하기 위한 충분한 주가 데이터가 존재하지 않습니다.")
-
-st.sidebar.markdown("---")
-st.sidebar.caption("ⓒ StockLab All Rights Reserved.")
