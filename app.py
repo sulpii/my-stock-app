@@ -347,11 +347,14 @@ with tab5:
     # Pro 모드가 아닌 경우 (Free, Lite) 기능 잠금 처리
     if current_plan != "Pro":
         st.warning("🔒 **몬테카를로 AI 예측 기능은 Pro 멤버십 전용 기능입니다.**")
-        st.info("""
-            <b>👑 Pro 멤버십 혜택</b><br>
+        
+        st.markdown("""
+        <div style="background-color: #1E293B; border: 1px solid #334155; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+            <b style="color: #38BDF8;">👑 Pro 멤버십 혜택</b><br>
             • 복수 종목 분할 투자 포트폴리오 시뮬레이션<br>
             • 최대 10,000회 몬테카를로 난수 시뮬레이션 지원<br>
             • 상위/하위 10% 위험 자산 및 예상 수익률 분석
+        </div>
         """, unsafe_allow_html=True)
         
         if st.button("👑 Pro 멤버십으로 업그레이드하기", type="primary"):
