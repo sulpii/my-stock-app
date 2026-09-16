@@ -4,10 +4,11 @@ import numpy as np
 import yfinance as yf
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
+import plotly.express as px
 from plotly.subplots import make_subplots
 
 # ----------------------------------------------------
-# 1. Page Config & CSS UI Style (보유금 잘림 방지 반영)
+# 1. Page Config & CSS UI Style
 # ----------------------------------------------------
 st.set_page_config(
     page_title="StockLab - Quant Dashboard",
@@ -197,7 +198,7 @@ rs = gain / loss
 df['RSI'] = 100 - (100 / (1 + rs))
 
 # ----------------------------------------------------
-# 6. Key Metrics Top Display (보유금 지표 글자 안잘리게 개선)
+# 6. Key Metrics Top Display
 # ----------------------------------------------------
 curr_price = float(df['Close'].iloc[-1])
 prev_price = float(df['Close'].iloc[-2])
@@ -230,7 +231,7 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
 ])
 
 # ----------------------------------------------------
-# TAB 1: 모의주식 거래 & 자산 (글자 안 잘림 적용)
+# TAB 1: 모의주식 거래 & 자산
 # ----------------------------------------------------
 with tab1:
     st.markdown('<div class="guide-box"><b>가상 모의투자</b>: 가상 예수금으로 실시간 주가를 매수/매도하며 잔고와 수익률을 관리합니다.</div>', unsafe_allow_html=True)
@@ -334,7 +335,7 @@ with tab1:
         st.dataframe(pd.DataFrame(st.session_state.trade_history).iloc[::-1], use_container_width=True)
 
 # ----------------------------------------------------
-# TAB 2: 포트폴리오 분석기 (3등분 오차 완화)
+# TAB 2: 포트폴리오 분석기 (px.line 오류 수정 처리)
 # ----------------------------------------------------
 with tab2:
     st.markdown('<div class="guide-box"><b>포트폴리오 분석</b>: 선택한 종목들의 과거 백테스팅, 상관관계 히트맵 및 리밸런싱 계산을 지원합니다.</div>', unsafe_allow_html=True)
@@ -383,8 +384,10 @@ with tab2:
                     b2.metric("연평균 수익률 (CAGR)", f"{cagr:.2f}%")
                     b3.metric("최대 낙폭 (MDD)", f"{mdd:.2f}%")
                     
-                    fig_bt = px.line(cum_returns, labels={'value': '자산 가치 (1.0 기준)', 'index': '날짜'}, title="포트폴리오 누적 성과 추이")
-                    fig_bt.update_layout(template="plotly_dark", height=350)
+                    # Plotly Graph Objects로 안전하게 차트 생성
+                    fig_bt = go.Figure()
+                    fig_bt.add_trace(go.Scatter(x=cum_returns.index, y=cum_returns.values, mode='lines', name='포트폴리오', line=dict(color='#38BDF8', width=2)))
+                    fig_bt.update_layout(template="plotly_dark", height=350, title="포트폴리오 누적 성과 추이", yaxis_title="자산 가치 (1.0 기준)")
                     st.plotly_chart(fig_bt, use_container_width=True)
 
                 with sub_t2:
@@ -410,7 +413,7 @@ with tab2:
                     st.table(pd.DataFrame(rebal_data))
 
 # ----------------------------------------------------
-# TAB 3: 기술적 분석 차트 (매수/매도 시점 마커)
+# TAB 3: 기술적 분석 차트
 # ----------------------------------------------------
 with tab3:
     st.markdown('<div class="guide-box"><b>기술적 차트</b>: 이동평균선(20/60일), 볼린저밴드, RSI 및 <b>AI 매매 신호 마커</b>를 조회합니다.</div>', unsafe_allow_html=True)
@@ -508,7 +511,7 @@ with tab5:
     col_v3.metric("샤프 지수 (Sharpe)", f"{sharpe_ratio:.2f}")
     
     fig_dd = go.Figure()
-    fig_dd.add_trace(go.Scatter(x=(cum_ret - peak)/peak * 100, fill='tozeroy', mode='lines', line=dict(color='#EF4444')))
+    fig_dd.add_trace(go.Scatter(x=df.index[1:], y=(cum_ret - peak)/peak * 100, fill='tozeroy', mode='lines', line=dict(color='#EF4444')))
     fig_dd.update_layout(template="plotly_dark", height=300, yaxis_title="낙폭 비율 (%)")
     st.plotly_chart(fig_dd, use_container_width=True)
 
