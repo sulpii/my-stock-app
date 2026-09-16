@@ -49,7 +49,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ----------------------------------------------------
-# 2. Session State Initialize (모의투자 잔고)
+# 2. Session State Initialize (모의투자 잔고 & 편의성)
 # ----------------------------------------------------
 if 'cash' not in st.session_state:
     st.session_state.cash = 100000.0  # 초기 가상 현금 $100,000
@@ -57,9 +57,11 @@ if 'portfolio' not in st.session_state:
     st.session_state.portfolio = {}  # {'AAPL': {'qty': 10, 'avg_price': 150.0}}
 if 'trade_history' not in st.session_state:
     st.session_state.trade_history = []
+if 'trade_qty_val' not in st.session_state:
+    st.session_state.trade_qty_val = 10
 
 # ----------------------------------------------------
-# 3. Data Fetching & Caching
+# 3. Data Fetching & Caching (인기 종목 확장 - 4번 반영)
 # ----------------------------------------------------
 POPULAR_STOCKS = {
     "애플 (AAPL)": "AAPL",
@@ -71,6 +73,9 @@ POPULAR_STOCKS = {
     "메타 (META)": "META",
     "S&P500 ETF (SPY)": "SPY",
     "나스닥100 ETF (QQQ)": "QQQ",
+    "TQQQ (나스닥 3배)": "TQQQ",
+    "SOXL (반도체 3배)": "SOXL",
+    "비트코인 (BTC-USD)": "BTC-USD",
     "삼성전자 (005930.KS)": "005930.KS"
 }
 
@@ -153,6 +158,21 @@ with st.sidebar:
     end_date = st.date_input("종료일", today)
     
     st.markdown("---")
+    
+    # 편의성 기능: 수동 데이터 새로고침 및 잔고 리셋 (3번 반영)
+    col_sb1, col_sb2 = st.columns(2)
+    with col_sb1:
+        if st.button("🔄 새로고침", use_container_width=True):
+            st.cache_data.clear()
+            st.rerun()
+    with col_sb2:
+        if st.button("⚠️ 잔고 리셋", use_container_width=True):
+            st.session_state.cash = 100000.0
+            st.session_state.portfolio = {}
+            st.session_state.trade_history = []
+            st.toast("예수금($100,000) 및 포트폴리오가 리셋되었습니다.")
+            st.rerun()
+
     st.caption("Powered by Streamlit & yfinance")
 
 # ----------------------------------------------------
@@ -201,7 +221,7 @@ m4.metric("평균 거래량", f"{avg_vol:,.0f}")
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ----------------------------------------------------
-# 7. Tab Navigation (모의주식 탭 추가)
+# 7. Tab Navigation
 # ----------------------------------------------------
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "📈 기술적 분석 차트", 
@@ -213,10 +233,10 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
 ])
 
 # ----------------------------------------------------
-# TAB 1: 차트 분석
+# TAB 1: 차트 분석 (2번: 매수/매도 시점 마커 추가)
 # ----------------------------------------------------
 with tab1:
-    st.markdown('<div class="guide-box"><b>기술적 차트</b>: 캔들차트, 이동평균선(20일/60일), 볼린저밴드 및 RSI 지표를 실시간 조회합니다.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="guide-box"><b>기술적 차트</b>: 캔들차트, 이동평균선(20일/60일), 볼린저밴드, RSI 및 <b>AI 매매 신호 마커</b>를 조회합니다.</div>', unsafe_allow_html=True)
     
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03, row_heights=[0.7, 0.3])
     
@@ -231,6 +251,28 @@ with tab1:
     fig.add_trace(go.Scatter(x=df.index, y=df['UpperBB'], mode='lines', name='Upper BB', line=dict(color='rgba(255,255,255,0.3)', dash='dash')), row=1, col=1)
     fig.add_trace(go.Scatter(x=df.index, y=df['LowerBB'], mode='lines', name='Lower BB', line=dict(color='rgba(255,255,255,0.3)', dash='dash')), row=1, col=1)
     
+    # 2번: AI 매수/매도 시점 마커 생성 (SMA 크로스오버 기준 예시)
+    buy_signals = df[(df['SMA20'] > df['SMA60']) & (df['SMA20'].shift(1) <= df['SMA60'].shift(1))]
+    sell_signals = df[(df['SMA20'] < df['SMA60']) & (df['SMA20'].shift(1) >= df['SMA60'].shift(1))]
+    
+    # 매수 마커 (▲ 초록색)
+    fig.add_trace(go.Scatter(
+        x=buy_signals.index,
+        y=buy_signals['Low'] * 0.97,
+        mode='markers',
+        marker=dict(symbol='triangle-up', size=11, color='#10B981'),
+        name='AI 매수 신호 (▲)'
+    ), row=1, col=1)
+
+    # 매도 마커 (▼ 빨간색)
+    fig.add_trace(go.Scatter(
+        x=sell_signals.index,
+        y=sell_signals['High'] * 1.03,
+        mode='markers',
+        marker=dict(symbol='triangle-down', size=11, color='#EF4444'),
+        name='AI 매도 신호 (▼)'
+    ), row=1, col=1)
+
     # RSI
     fig.add_trace(go.Scatter(x=df.index, y=df['RSI'], mode='lines', name='RSI 14', line=dict(color='#EC4899', width=1.5)), row=2, col=1)
     fig.add_hline(y=70, line_dash="dash", line_color="red", row=2, col=1)
@@ -290,12 +332,11 @@ with tab2:
             st.write(r)
 
 # ----------------------------------------------------
-# TAB 3: 모의주식 거래 (복원 및 신규 장착)
+# TAB 3: 모의주식 거래 (편의성: 원클릭 수량 버튼 포함)
 # ----------------------------------------------------
 with tab3:
     st.markdown('<div class="guide-box"><b>🎮 모의주식 투자</b>: 가상 예수금으로 실시간 주가를 매수/매도하며 잔고와 수익률을 관리합니다.</div>', unsafe_allow_html=True)
     
-    # 상단 요약 정보
     held_qty = st.session_state.portfolio.get(ticker, {}).get('qty', 0)
     avg_buy_p = st.session_state.portfolio.get(ticker, {}).get('avg_price', 0.0)
     
@@ -314,12 +355,23 @@ with tab3:
     
     col_trade, col_port = st.columns([1, 1])
     
-    # 주문 실행 폼
     with col_trade:
         st.subheader("🛒 주문하기")
         st.write(f"현재 **{ticker}** 시장가: **${curr_price:,.2f}**")
         
-        trade_qty = st.number_input("주문 수량(주)", min_value=1, value=10, step=1)
+        # 편의성 기능: 빠른 수량 입력 버튼
+        st.caption("⚡ 빠른 수량 선택")
+        btn_q1, btn_q2, btn_q3, btn_q4 = st.columns(4)
+        if btn_q1.button("+10주"):
+            st.session_state.trade_qty_val += 10
+        if btn_q2.button("+50주"):
+            st.session_state.trade_qty_val += 50
+        if btn_q3.button("+100주"):
+            st.session_state.trade_qty_val += 100
+        if btn_q4.button("전액 매수"):
+            st.session_state.trade_qty_val = int(st.session_state.cash // curr_price) if curr_price > 0 else 1
+            
+        trade_qty = st.number_input("주문 수량(주)", min_value=1, value=max(1, st.session_state.trade_qty_val), step=1)
         total_cost = trade_qty * curr_price
         st.caption(f"총 주문 금액: **${total_cost:,.2f}**")
         
@@ -367,7 +419,6 @@ with tab3:
                     st.success(f"{ticker} {trade_qty}주 매도 완료!")
                     st.rerun()
 
-    # 보유 포트폴리오 현황
     with col_port:
         st.subheader("📋 내 보유 포트폴리오")
         if not st.session_state.portfolio:
@@ -383,7 +434,6 @@ with tab3:
                 })
             st.table(pd.DataFrame(port_data))
             
-    # 체결 내역
     if st.session_state.trade_history:
         st.markdown("---")
         st.subheader("📜 최근 거래 내역")
@@ -455,7 +505,6 @@ with tab5:
 with tab6:
     st.markdown('<div class="guide-box"><b>몬테카를로 확률 예측</b>: 미래 주가 확률 분포 및 포트폴리오 시뮬레이션을 제공합니다.</div>', unsafe_allow_html=True)
     
-    # Pro 모드가 아닌 경우 (Free, Lite) 기능 잠금 처리
     if current_plan != "Pro":
         st.warning("🔒 **몬테카를로 AI 예측 기능은 Pro 멤버십 전용 기능입니다.**")
         
@@ -475,7 +524,7 @@ with tab6:
         
         selected_mc_tickers = st.multiselect(
             "시뮬레이션할 포트폴리오 종목 구성", 
-            list(POPULAR_STOCKS.values()) + ["GOOGL", "AMZN", "MSFT"],
+            list(POPULAR_STOCKS.values()),
             default=["AAPL", "NVDA"]
         )
         
