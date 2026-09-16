@@ -134,17 +134,17 @@ with plan_col2:
         st.rerun()
 
 # 멤버십 업그레이드 안내
-if current_plan == "Free":
+if current_plan != "Pro":
     st.sidebar.markdown("""
         <div class="upgrade-card">
             <div class="upgrade-title">멤버십 업그레이드</div>
             <div class="upgrade-desc">
-                • <b>Lite</b>: 복수 종목 분할 시뮬레이션 (3천회)<br>
-                • <b>Pro</b>: 1만 회 시뮬레이션 + 백테스트 & 리밸런싱
+                • <b>Lite</b>: 단일 종목 시뮬레이션 (3천회)<br>
+                • <b>Pro</b>: 복수 종목 분할 시뮬레이션 (1만회) + 백테스트 & 리밸런싱
             </div>
         </div>
     """, unsafe_allow_html=True)
-    if st.sidebar.button("Lite / Pro 구매하기", use_container_width=True, type="primary"):
+    if st.sidebar.button("Pro 구매하기", use_container_width=True, type="primary"):
         st.toast("결제 페이지로 이동합니다. (테스트용 기능)")
 
 # 서비스 버전 정보
@@ -170,7 +170,7 @@ with col_s2:
 current_ticker = st.session_state['search_ticker']
 df_current = fetch_stock_data(current_ticker, period="1y")
 
-# 메인 탭 5개 (이모지 제거)
+# 메인 탭 5개
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     L['tab_sim'], 
     L['tab_calc'], 
@@ -369,19 +369,19 @@ with tab4:
         st.plotly_chart(fig_hist, use_container_width=True)
 
 # ----------------------------------------------------
-# TAB 5: 몬테카를로 AI 예측
+# TAB 5: 몬테카를로 AI 예측 (Pro 전용으로 수정)
 # ----------------------------------------------------
 with tab5:
-    st.markdown('<div class="guide-box"><b>몬테카를로 확률 예측</b>: 유료 플랜(Lite/Pro)에서는 복수 종목 분할 투자 시뮬레이션을 지원합니다.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="guide-box"><b>몬테카를로 확률 예측</b>: Pro 멤버십 플랜부터 복수 종목 분할 투자 시뮬레이션을 지원합니다.</div>', unsafe_allow_html=True)
     
-    if current_plan == "Free":
-        st.info("Free 플랜 사용 중: 단일 종목 시뮬레이션만 이용 가능합니다.")
-        st.warning("Lite 및 Pro 멤버십으로 업그레이드하시면 여러 종목을 분할 투자한 포트폴리오 몬테카를로 시뮬레이션을 이용할 수 있습니다!")
+    if current_plan != "Pro":
+        st.info(f"{current_plan} 플랜 사용 중: 단일 종목 시뮬레이션만 이용 가능합니다.")
+        st.warning("Pro 멤버십으로 업그레이드하시면 여러 종목을 분할 투자한 포트폴리오 몬테카를로 시뮬레이션을 이용할 수 있습니다!")
         
         selected_mc_tickers = [current_ticker]
         mc_weights = {current_ticker: 100.0}
     else:
-        st.success(f"{current_plan} 멤버십 혜택: 복수 종목 분할 투자 시뮬레이션 모드가 활성화되었습니다!")
+        st.success("Pro 멤버십 혜택: 복수 종목 분할 투자 시뮬레이션 모드가 활성화되었습니다!")
         selected_mc_tickers = st.multiselect(
             "시뮬레이션할 포트폴리오 종목 구성", 
             list(POPULAR_STOCKS.values()) + ["GOOGL", "AMZN", "MSFT"],
