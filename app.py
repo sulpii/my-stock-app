@@ -49,7 +49,17 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ----------------------------------------------------
-# 2. Data Fetching & Caching
+# 2. Session State Initialize (모의투자 잔고)
+# ----------------------------------------------------
+if 'cash' not in st.session_state:
+    st.session_state.cash = 100000.0  # 초기 가상 현금 $100,000
+if 'portfolio' not in st.session_state:
+    st.session_state.portfolio = {}  # {'AAPL': {'qty': 10, 'avg_price': 150.0}}
+if 'trade_history' not in st.session_state:
+    st.session_state.trade_history = []
+
+# ----------------------------------------------------
+# 3. Data Fetching & Caching
 # ----------------------------------------------------
 POPULAR_STOCKS = {
     "애플 (AAPL)": "AAPL",
@@ -89,7 +99,7 @@ def fetch_multi_ticker_data(tickers, start_date, end_date):
         return None
 
 # ----------------------------------------------------
-# 3. Sidebar Setup & Pricing Tier
+# 4. Sidebar Setup & Pricing Tier
 # ----------------------------------------------------
 with st.sidebar:
     st.title("📈 ProTradr AI")
@@ -108,7 +118,7 @@ with st.sidebar:
         st.markdown("""
         <div class="plan-card">
             <div class="plan-title">Free Plan</div>
-            <p style="font-size:0.8rem; color:#94A3B8; margin-top:5px;">기본 차트 및 단순 보조지표 확인 가능</p>
+            <p style="font-size:0.8rem; color:#94A3B8; margin-top:5px;">기본 차트 및 모의 주식 거래 가능</p>
         </div>
         """, unsafe_allow_html=True)
     elif current_plan == "Lite (라이트)":
@@ -146,9 +156,9 @@ with st.sidebar:
     st.caption("Powered by Streamlit & yfinance")
 
 # ----------------------------------------------------
-# 4. Main Body & Data Fetching
+# 5. Main Body & Data Fetching
 # ----------------------------------------------------
-st.title(f"📊 {ticker} 퀀트 분석 Dashboard")
+st.title(f"📊 {ticker} 퀀트 분석 & 모의주식 Dashboard")
 
 df = fetch_stock_data(ticker, start_date, end_date)
 
@@ -171,10 +181,10 @@ rs = gain / loss
 df['RSI'] = 100 - (100 / (1 + rs))
 
 # ----------------------------------------------------
-# 5. Key Metrics Top Display
+# 6. Key Metrics Top Display
 # ----------------------------------------------------
-curr_price = df['Close'].iloc[-1]
-prev_price = df['Close'].iloc[-2]
+curr_price = float(df['Close'].iloc[-1])
+prev_price = float(df['Close'].iloc[-2])
 price_chg = curr_price - prev_price
 price_chg_pct = (price_chg / prev_price) * 100
 
@@ -191,11 +201,12 @@ m4.metric("평균 거래량", f"{avg_vol:,.0f}")
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ----------------------------------------------------
-# 6. Tab Navigation
+# 7. Tab Navigation (모의주식 탭 추가)
 # ----------------------------------------------------
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "📈 기술적 분석 차트", 
     "🤖 AI 매매 신호", 
+    "💵 모의주식 거래",
     "⚙️ 백테스팅 엔진", 
     "📊 변동성/위험 분석", 
     "🔮 몬테카를로 AI 예측 (Pro)"
@@ -279,9 +290,109 @@ with tab2:
             st.write(r)
 
 # ----------------------------------------------------
-# TAB 3: 백테스팅
+# TAB 3: 모의주식 거래 (복원 및 신규 장착)
 # ----------------------------------------------------
 with tab3:
+    st.markdown('<div class="guide-box"><b>🎮 모의주식 투자</b>: 가상 예수금으로 실시간 주가를 매수/매도하며 잔고와 수익률을 관리합니다.</div>', unsafe_allow_html=True)
+    
+    # 상단 요약 정보
+    held_qty = st.session_state.portfolio.get(ticker, {}).get('qty', 0)
+    avg_buy_p = st.session_state.portfolio.get(ticker, {}).get('avg_price', 0.0)
+    
+    eval_val = held_qty * curr_price
+    buy_val = held_qty * avg_buy_p
+    pnl = eval_val - buy_val
+    pnl_pct = (pnl / buy_val * 100) if buy_val > 0 else 0.0
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("보유 예수금", f"${st.session_state.cash:,.2f}")
+    c2.metric(f"보유 수량 ({ticker})", f"{held_qty:,} 주")
+    c3.metric("평균 단가", f"${avg_buy_p:,.2f}")
+    c4.metric("평가 손익", f"${pnl:,.2f}", f"{pnl_pct:+.2f}%")
+
+    st.markdown("---")
+    
+    col_trade, col_port = st.columns([1, 1])
+    
+    # 주문 실행 폼
+    with col_trade:
+        st.subheader("🛒 주문하기")
+        st.write(f"현재 **{ticker}** 시장가: **${curr_price:,.2f}**")
+        
+        trade_qty = st.number_input("주문 수량(주)", min_value=1, value=10, step=1)
+        total_cost = trade_qty * curr_price
+        st.caption(f"총 주문 금액: **${total_cost:,.2f}**")
+        
+        btn_buy, btn_sell = st.columns(2)
+        
+        with btn_buy:
+            if st.button("🔴 매수 (Buy)", type="primary", use_container_width=True):
+                if st.session_state.cash < total_cost:
+                    st.error("예수금이 부족합니다.")
+                else:
+                    st.session_state.cash -= total_cost
+                    new_qty = held_qty + trade_qty
+                    new_avg = ((held_qty * avg_buy_p) + total_cost) / new_qty
+                    st.session_state.portfolio[ticker] = {'qty': new_qty, 'avg_price': new_avg}
+                    
+                    st.session_state.trade_history.append({
+                        '시간': datetime.now().strftime('%H:%M:%S'),
+                        '종목': ticker,
+                        '구분': '매수',
+                        '수량': trade_qty,
+                        '체결가': f"${curr_price:,.2f}"
+                    })
+                    st.success(f"{ticker} {trade_qty}주 매수 완료!")
+                    st.rerun()
+
+        with btn_sell:
+            if st.button("🔵 매도 (Sell)", use_container_width=True):
+                if held_qty < trade_qty:
+                    st.error("보유 수량이 부족합니다.")
+                else:
+                    st.session_state.cash += total_cost
+                    new_qty = held_qty - trade_qty
+                    if new_qty == 0:
+                        del st.session_state.portfolio[ticker]
+                    else:
+                        st.session_state.portfolio[ticker]['qty'] = new_qty
+                        
+                    st.session_state.trade_history.append({
+                        '시간': datetime.now().strftime('%H:%M:%S'),
+                        '종목': ticker,
+                        '구분': '매도',
+                        '수량': trade_qty,
+                        '체결가': f"${curr_price:,.2f}"
+                    })
+                    st.success(f"{ticker} {trade_qty}주 매도 완료!")
+                    st.rerun()
+
+    # 보유 포트폴리오 현황
+    with col_port:
+        st.subheader("📋 내 보유 포트폴리오")
+        if not st.session_state.portfolio:
+            st.info("현재 보유 중인 주식이 없습니다.")
+        else:
+            port_data = []
+            for t_code, info in st.session_state.portfolio.items():
+                port_data.append({
+                    "종목": t_code,
+                    "보유수량": f"{info['qty']}주",
+                    "평균단가": f"${info['avg_price']:,.2f}",
+                    "평가금액": f"${info['qty'] * curr_price:,.2f}"
+                })
+            st.table(pd.DataFrame(port_data))
+            
+    # 체결 내역
+    if st.session_state.trade_history:
+        st.markdown("---")
+        st.subheader("📜 최근 거래 내역")
+        st.dataframe(pd.DataFrame(st.session_state.trade_history).iloc[::-1], use_container_width=True)
+
+# ----------------------------------------------------
+# TAB 4: 백테스팅
+# ----------------------------------------------------
+with tab4:
     st.markdown('<div class="guide-box"><b>전략 백테스팅</b>: SMA 크로스오버 전략으로 과거 데이터 기반의 수익률을 시뮬레이션합니다.</div>', unsafe_allow_html=True)
     
     if current_plan == "Free":
@@ -316,9 +427,9 @@ with tab3:
     st.plotly_chart(fig_bt, use_container_width=True)
 
 # ----------------------------------------------------
-# TAB 4: 변동성 및 위험 분석
+# TAB 5: 변동성 및 위험 분석
 # ----------------------------------------------------
-with tab4:
+with tab5:
     st.markdown('<div class="guide-box"><b>위험도 분석</b>: 낙폭(Drawdown) 및 일일 수익률 분포를 통한 손실 리스크 평가를 제공합니다.</div>', unsafe_allow_html=True)
     
     daily_ret = df['Close'].pct_change().dropna()
@@ -339,9 +450,9 @@ with tab4:
     st.plotly_chart(fig_dd, use_container_width=True)
 
 # ----------------------------------------------------
-# TAB 5: 몬테카를로 AI 예측 (Pro 전용 잠금)
+# TAB 6: 몬테카를로 AI 예측 (Pro 전용 잠금)
 # ----------------------------------------------------
-with tab5:
+with tab6:
     st.markdown('<div class="guide-box"><b>몬테카를로 확률 예측</b>: 미래 주가 확률 분포 및 포트폴리오 시뮬레이션을 제공합니다.</div>', unsafe_allow_html=True)
     
     # Pro 모드가 아닌 경우 (Free, Lite) 기능 잠금 처리
