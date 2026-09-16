@@ -31,12 +31,28 @@ st.markdown("""
         color: #94A3B8 !important;
     }
     .stApp { background-color: #0B0E14; color: #E2E8F0; font-family: 'Pretendard', sans-serif; }
-    .sidebar-header { font-size: 1.8rem; font-weight: 800; color: #38BDF8; margin-bottom: 2px; }
-    .sidebar-subheader { font-size: 0.85rem; color: #94A3B8; margin-bottom: 15px; }
+    
+    /* 메인 상단 타이틀 스타일 */
+    .main-title { font-size: 2.2rem; font-weight: 800; color: #38BDF8; margin-bottom: 0px; }
+    .main-subtitle { font-size: 1rem; color: #94A3B8; margin-bottom: 20px; }
+    
     .badge-free { background-color: #334155; color: #94A3B8; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; }
     .badge-lite { background-color: #0284C7; color: #FFFFFF; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; }
     .badge-pro { background: linear-gradient(135deg, #6366F1 0%, #A855F7 100%); color: #FFFFFF; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; }
     .guide-box { background-color: #1E293B; border-left: 4px solid #38BDF8; padding: 12px 16px; border-radius: 6px; font-size: 0.9rem; color: #CBD5E1; margin-bottom: 15px; }
+    
+    /* 업그레이드 카드 스타일 */
+    .upgrade-card {
+        background: linear-gradient(135deg, #1E1B4B 0%, #0F172A 100%);
+        border: 1px solid #6366F1;
+        border-radius: 12px;
+        padding: 16px;
+        margin-top: 15px;
+        margin-bottom: 15px;
+    }
+    .upgrade-title { font-size: 1rem; font-weight: 700; color: #F43F5E; margin-bottom: 6px; }
+    .upgrade-desc { font-size: 0.8rem; color: #94A3B8; margin-bottom: 10px; line-height: 1.4; }
+    .version-tag { font-size: 0.75rem; color: #64748B; text-align: center; margin-top: 20px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -64,6 +80,8 @@ POPULAR_STOCKS = {
     "SK하이닉스 (000660.KS)": "000660.KS",
     "S&P500 ETF (SPY)": "SPY"
 }
+
+APP_VERSION = "v1.5.0 Pro"
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def fetch_stock_data(ticker, period="1y"):
@@ -95,10 +113,6 @@ if 'user_plan' not in st.session_state: st.session_state['user_plan'] = "Free"
 selected_lang = st.sidebar.selectbox("🌐 Language", ["한국어", "English"], index=0)
 L = LANG_DICT.get(selected_lang, LANG_DICT["한국어"])
 
-st.sidebar.markdown(f'<p class="sidebar-header">🧪 {L["title"]}</p>', unsafe_allow_html=True)
-st.sidebar.markdown(f'<p class="sidebar-subheader">{L["subtitle"]}</p>', unsafe_allow_html=True)
-st.sidebar.markdown("---")
-
 current_plan = st.session_state['user_plan']
 st.sidebar.markdown("##### 👤 나의 멤버십 현황")
 
@@ -109,16 +123,35 @@ with plan_col1:
     else: st.markdown('<span class="badge-pro">👑 Pro 모드</span>', unsafe_allow_html=True)
 
 with plan_col2:
-    new_plan = st.selectbox("플랜변경(테스트)", ["Free", "Lite", "Pro"], index=["Free", "Lite", "Pro"].index(current_plan), label_visibility="collapsed")
+    new_plan = st.selectbox("플랜(테스트)", ["Free", "Lite", "Pro"], index=["Free", "Lite", "Pro"].index(current_plan), label_visibility="collapsed")
     if new_plan != current_plan:
         st.session_state['user_plan'] = new_plan
         st.rerun()
 
+# 💳 구매창 (멤버십 업그레이드 배너)
+if current_plan == "Free":
+    st.sidebar.markdown("""
+        <div class="upgrade-card">
+            <div class="upgrade-title">⚡ 멤버십 업그레이드</div>
+            <div class="upgrade-desc">
+                • <b>Lite</b>: 복수 종목 분할 시뮬레이션 (3천회)<br>
+                • <b>Pro</b>: 1만 회 시뮬레이션 + 백테스트 & 리밸런싱
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+    if st.sidebar.button("💳 Lite / Pro 구매하기", use_container_width=True, type="primary"):
+        st.toast("🛒 결제 페이지로 이동합니다. (테스트용 기능)", icon="💳")
+
+# 📌 서비스 버전 정보
 st.sidebar.markdown("---")
+st.sidebar.markdown(f'<div class="version-tag">StockLab Version: <b>{APP_VERSION}</b></div>', unsafe_allow_html=True)
 
 # ====================================================
-# 메인 화면 영역
+# 🔝 메인 화면 영역 (최상단 타이틀 배치)
 # ====================================================
+st.markdown(f'<h1 class="main-title">🧪 {L["title"]}</h1>', unsafe_allow_html=True)
+st.markdown(f'<p class="main-subtitle">{L["subtitle"]}</p>', unsafe_allow_html=True)
+
 st.markdown("### 🔍 기준 종목 선택")
 col_s1, col_s2 = st.columns([2, 3])
 with col_s1:
@@ -190,7 +223,7 @@ with tab1:
         st.error("종목 데이터를 불러올 수 없습니다.")
 
 # ----------------------------------------------------
-# TAB 2: 포트폴리오 분석기 (백테스트, 상관계수, 리밸런싱)
+# TAB 2: 포트폴리오 분석기 (3등분 소수점 대응 완료)
 # ----------------------------------------------------
 with tab2:
     st.markdown('<div class="guide-box">💡 <b>포트폴리오 통합 분석</b>: 선택한 종목들의 과거 백테스팅, 종목 간 상관관계, 리밸런싱 계산을 지원합니다.</div>', unsafe_allow_html=True)
@@ -205,17 +238,21 @@ with tab2:
         weights = {}
         st.markdown("##### ⚖️ 종목별 투자 비중 설정 (%)")
         cols = st.columns(len(selected_port_tickers))
-        default_w = round(100 / len(selected_port_tickers), 1)
+        
+        # 3등분 시 33.33% 등 정밀 소수점 자동 분할 처리
+        default_w = round(100.0 / len(selected_port_tickers), 2)
         
         for idx, t in enumerate(selected_port_tickers):
             with cols[idx]:
-                weights[t] = st.number_input(f"{t} 비중", min_value=0.0, max_value=100.0, value=default_w, step=5.0)
+                weights[t] = st.number_input(f"{t} 비중", min_value=0.0, max_value=100.0, value=default_w, step=1.0, format="%.2f")
                 
-        tot_weight = sum(weights.values())
-        if abs(tot_weight - 100.0) > 0.1:
-            st.warning(f"⚠️ 비중 합계가 {tot_weight}%입니다. (100%로 맞춰주세요)")
+        tot_weight = round(sum(weights.values()), 2)
+        
+        # 소수점 오차(예: 99.9%~100.1%) 감지 허용
+        if abs(tot_weight - 100.0) > 0.5:
+            st.warning(f"⚠️ 비중 합계가 {tot_weight}%입니다. (합계 100%로 맞춰주세요)")
         else:
-            st.success("✅ 비중 합계: 100%")
+            st.success(f"✅ 비중 합계: {tot_weight}% (정상)")
             
             today = datetime.today()
             start_2y = today - timedelta(days=365*2)
@@ -223,7 +260,11 @@ with tab2:
             
             if df_port is not None and not df_port.empty:
                 daily_returns = df_port.pct_change().dropna()
-                w_list = np.array([weights[t]/100.0 for t in selected_port_tickers])
+                
+                # 비중 정규화 (합이 Exact 1.0이 되도록 처리)
+                w_list = np.array([weights[t] for t in selected_port_tickers])
+                w_list = w_list / np.sum(w_list)
+                
                 port_returns = (daily_returns * w_list).sum(axis=1)
                 cum_returns = (1 + port_returns).cumprod()
                 
@@ -257,13 +298,13 @@ with tab2:
                     total_inv = st.number_input("현재 포트폴리오 총 평가금액 (원)", value=10000000, step=1000000)
                     
                     rebal_data = []
-                    for t in selected_port_tickers:
-                        target_amt = total_inv * (weights[t] / 100.0)
+                    for idx, t in enumerate(selected_port_tickers):
+                        target_amt = total_inv * w_list[idx]
                         last_p = df_port[t].iloc[-1]
                         target_shares = target_amt / last_p
                         rebal_data.append({
                             "종목": t,
-                            "목표 비중": f"{weights[t]}%",
+                            "목표 비중": f"{weights[t]:.2f}%",
                             "목표 금액": f"₩{target_amt:,.0f}",
                             "현재가": f"{last_p:,.2f}",
                             "필요 목표 주수": f"{target_shares:.2f} 주"
@@ -284,12 +325,10 @@ with tab3:
         
         fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03, row_heights=[0.7, 0.3])
         
-        # 캔들스틱/종가 차트
         fig.add_trace(go.Scatter(x=df_current.index, y=df_current['Close'], name='종가', line=dict(color='#38BDF8', width=2)), row=1, col=1)
         fig.add_trace(go.Scatter(x=df_current.index, y=df_current['MA20'], name='20일 이동평균', line=dict(color='#F59E0B', width=1.5)), row=1, col=1)
         fig.add_trace(go.Scatter(x=df_current.index, y=df_current['MA60'], name='60일 이동평균', line=dict(color='#EC4899', width=1.5)), row=1, col=1)
         
-        # 거래량 차트
         fig.add_trace(go.Bar(x=df_current.index, y=df_current['Volume'], name='거래량', marker_color='#64748B'), row=2, col=1)
         
         fig.update_layout(template="plotly_dark", height=500, title=f"{current_ticker} 주가 및 이동평균선 추이", showlegend=True)
@@ -328,12 +367,11 @@ with tab4:
         st.plotly_chart(fig_hist, use_container_width=True)
 
 # ----------------------------------------------------
-# TAB 5: 몬테카를로 AI 예측 (Lite/Pro 분할투자 지원)
+# TAB 5: 몬테카를로 AI 예측
 # ----------------------------------------------------
 with tab5:
     st.markdown('<div class="guide-box">💡 <b>몬테카를로 확률 예측</b>: 유료 플랜(Lite/Pro)에서는 복수 종목 분할 투자 시뮬레이션을 지원합니다.</div>', unsafe_allow_html=True)
     
-    # 🔒 유료 기능 제한 로직
     if current_plan == "Free":
         st.info("💡 **Free 플랜 사용 중**: 단일 종목 시뮬레이션만 이용 가능합니다.")
         st.warning("⚡ **Lite 및 Pro 멤버십으로 업그레이드하시면 여러 종목을 분할 투자한 포트폴리오 몬테카를로 시뮬레이션을 이용할 수 있습니다!**")
@@ -351,10 +389,10 @@ with tab5:
         if len(selected_mc_tickers) > 1:
             mc_weights = {}
             cols = st.columns(len(selected_mc_tickers))
-            def_w = round(100 / len(selected_mc_tickers), 1)
+            def_w = round(100.0 / len(selected_mc_tickers), 2)
             for idx, t in enumerate(selected_mc_tickers):
                 with cols[idx]:
-                    mc_weights[t] = st.number_input(f"{t} 비중(%)", min_value=0.0, max_value=100.0, value=def_w, key=f"mc_w_{t}")
+                    mc_weights[t] = st.number_input(f"{t} 비중(%)", min_value=0.0, max_value=100.0, value=def_w, step=1.0, format="%.2f", key=f"mc_w_{t}")
         else:
             mc_weights = {selected_mc_tickers[0]: 100.0} if selected_mc_tickers else {}
 
@@ -380,7 +418,8 @@ with tab5:
             if len(selected_mc_tickers) == 1:
                 port_daily_ret = daily_returns.iloc[:, 0]
             else:
-                w_arr = np.array([mc_weights[t]/100.0 for t in selected_mc_tickers])
+                w_arr = np.array([mc_weights[t] for t in selected_mc_tickers])
+                w_arr = w_arr / np.sum(w_arr)
                 port_daily_ret = (daily_returns * w_arr).sum(axis=1)
                 
             u = port_daily_ret.mean()
