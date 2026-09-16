@@ -10,7 +10,6 @@ from datetime import datetime, timedelta
 # 1. Page Configuration
 st.set_page_config(
     page_title="스톡랩 (StockLab)", 
-    page_icon="🧪", 
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -32,7 +31,9 @@ st.markdown("""
     }
     .stApp { background-color: #0B0E14; color: #E2E8F0; font-family: 'Pretendard', sans-serif; }
     
-    /* 메인 상단 타이틀 스타일 */
+    /* 타이틀 스타일 */
+    .sidebar-title { font-size: 1.5rem; font-weight: 800; color: #38BDF8; margin-bottom: 0px; }
+    .sidebar-subtitle { font-size: 0.8rem; color: #94A3B8; margin-bottom: 15px; }
     .main-title { font-size: 2.2rem; font-weight: 800; color: #38BDF8; margin-bottom: 0px; }
     .main-subtitle { font-size: 1rem; color: #94A3B8; margin-bottom: 20px; }
     
@@ -108,13 +109,17 @@ if 'search_ticker' not in st.session_state: st.session_state['search_ticker'] = 
 if 'user_plan' not in st.session_state: st.session_state['user_plan'] = "Free"
 
 # ====================================================
-# 👈 사이드바
+# 사이드바 (최상단 제목 포함)
 # ====================================================
-selected_lang = st.sidebar.selectbox("🌐 Language", ["한국어", "English"], index=0)
+st.sidebar.markdown('<h2 class="sidebar-title">StockLab</h2>', unsafe_allow_html=True)
+st.sidebar.markdown('<p class="sidebar-subtitle">주식 모의투자 & AI 시뮬레이터</p>', unsafe_allow_html=True)
+st.sidebar.markdown("---")
+
+selected_lang = st.sidebar.selectbox("Language", ["한국어", "English"], index=0)
 L = LANG_DICT.get(selected_lang, LANG_DICT["한국어"])
 
 current_plan = st.session_state['user_plan']
-st.sidebar.markdown("##### 👤 나의 멤버십 현황")
+st.sidebar.markdown("##### 나의 멤버십 현황")
 
 plan_col1, plan_col2 = st.sidebar.columns([2, 1])
 with plan_col1:
@@ -128,34 +133,34 @@ with plan_col2:
         st.session_state['user_plan'] = new_plan
         st.rerun()
 
-# 💳 구매창 (멤버십 업그레이드 배너)
+# 멤버십 업그레이드 안내
 if current_plan == "Free":
     st.sidebar.markdown("""
         <div class="upgrade-card">
-            <div class="upgrade-title">⚡ 멤버십 업그레이드</div>
+            <div class="upgrade-title">멤버십 업그레이드</div>
             <div class="upgrade-desc">
                 • <b>Lite</b>: 복수 종목 분할 시뮬레이션 (3천회)<br>
                 • <b>Pro</b>: 1만 회 시뮬레이션 + 백테스트 & 리밸런싱
             </div>
         </div>
     """, unsafe_allow_html=True)
-    if st.sidebar.button("💳 Lite / Pro 구매하기", use_container_width=True, type="primary"):
-        st.toast("🛒 결제 페이지로 이동합니다. (테스트용 기능)", icon="💳")
+    if st.sidebar.button("Lite / Pro 구매하기", use_container_width=True, type="primary"):
+        st.toast("결제 페이지로 이동합니다. (테스트용 기능)")
 
-# 📌 서비스 버전 정보
+# 서비스 버전 정보
 st.sidebar.markdown("---")
 st.sidebar.markdown(f'<div class="version-tag">StockLab Version: <b>{APP_VERSION}</b></div>', unsafe_allow_html=True)
 
 # ====================================================
-# 🔝 메인 화면 영역 (최상단 타이틀 배치)
+# 메인 화면 영역 (최상단 타이틀 배치)
 # ====================================================
-st.markdown(f'<h1 class="main-title">🧪 {L["title"]}</h1>', unsafe_allow_html=True)
+st.markdown(f'<h1 class="main-title">{L["title"]}</h1>', unsafe_allow_html=True)
 st.markdown(f'<p class="main-subtitle">{L["subtitle"]}</p>', unsafe_allow_html=True)
 
-st.markdown("### 🔍 기준 종목 선택")
+st.markdown("### 기준 종목 선택")
 col_s1, col_s2 = st.columns([2, 3])
 with col_s1:
-    quick_choice = st.selectbox("🔥 인기 추천 종목 퀵 선택", ["선택 안함"] + list(POPULAR_STOCKS.keys()))
+    quick_choice = st.selectbox("인기 추천 종목 퀵 선택", ["선택 안함"] + list(POPULAR_STOCKS.keys()))
     if quick_choice != "선택 안함": st.session_state['search_ticker'] = POPULAR_STOCKS[quick_choice]
 
 with col_s2:
@@ -165,20 +170,20 @@ with col_s2:
 current_ticker = st.session_state['search_ticker']
 df_current = fetch_stock_data(current_ticker, period="1y")
 
-# 메인 탭 5개
+# 메인 탭 5개 (이모지 제거)
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    f"💵 {L['tab_sim']}", 
-    f"🧮 {L['tab_calc']}", 
-    f"📈 {L['tab_tech']}", 
-    f"📊 {L['tab_risk']}", 
-    f"🎯 {L['tab_predict']}"
+    L['tab_sim'], 
+    L['tab_calc'], 
+    L['tab_tech'], 
+    L['tab_risk'], 
+    L['tab_predict']
 ])
 
 # ----------------------------------------------------
 # TAB 1: 모의투자 & 보유 자산
 # ----------------------------------------------------
 with tab1:
-    st.markdown('<div class="guide-box">💡 <b>가상 모의투자</b>: 현재 선택한 종목을 매수/매도하며 자산을 운용해보세요.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="guide-box"><b>가상 모의투자</b>: 현재 선택한 종목을 매수/매도하며 자산을 운용해보세요.</div>', unsafe_allow_html=True)
     
     if df_current is not None:
         latest_price = df_current['Close'].iloc[-1]
@@ -191,7 +196,7 @@ with tab1:
         c3.metric(f"{current_ticker} 보유 수량", f"{held_qty:,} 주")
         
         st.markdown("---")
-        st.markdown("##### 🛒 매수 및 매도 주문")
+        st.markdown("##### 매수 및 매도 주문")
         trade_col1, trade_col2 = st.columns(2)
         
         with trade_col1:
@@ -223,23 +228,22 @@ with tab1:
         st.error("종목 데이터를 불러올 수 없습니다.")
 
 # ----------------------------------------------------
-# TAB 2: 포트폴리오 분석기 (3등분 소수점 대응 완료)
+# TAB 2: 포트폴리오 분석기
 # ----------------------------------------------------
 with tab2:
-    st.markdown('<div class="guide-box">💡 <b>포트폴리오 통합 분석</b>: 선택한 종목들의 과거 백테스팅, 종목 간 상관관계, 리밸런싱 계산을 지원합니다.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="guide-box"><b>포트폴리오 통합 분석</b>: 선택한 종목들의 과거 백테스팅, 종목 간 상관관계, 리밸런싱 계산을 지원합니다.</div>', unsafe_allow_html=True)
     
     selected_port_tickers = st.multiselect(
-        "📌 분석할 포트폴리오 종목 선택", 
+        "분석할 포트폴리오 종목 선택", 
         list(POPULAR_STOCKS.values()) + ["GOOGL", "AMZN", "MSFT"],
         default=["AAPL", "NVDA", "SPY"]
     )
     
     if len(selected_port_tickers) >= 2:
         weights = {}
-        st.markdown("##### ⚖️ 종목별 투자 비중 설정 (%)")
+        st.markdown("##### 종목별 투자 비중 설정 (%)")
         cols = st.columns(len(selected_port_tickers))
         
-        # 3등분 시 33.33% 등 정밀 소수점 자동 분할 처리
         default_w = round(100.0 / len(selected_port_tickers), 2)
         
         for idx, t in enumerate(selected_port_tickers):
@@ -248,11 +252,10 @@ with tab2:
                 
         tot_weight = round(sum(weights.values()), 2)
         
-        # 소수점 오차(예: 99.9%~100.1%) 감지 허용
         if abs(tot_weight - 100.0) > 0.5:
-            st.warning(f"⚠️ 비중 합계가 {tot_weight}%입니다. (합계 100%로 맞춰주세요)")
+            st.warning(f"비중 합계가 {tot_weight}%입니다. (합계 100%로 맞춰주세요)")
         else:
-            st.success(f"✅ 비중 합계: {tot_weight}% (정상)")
+            st.success(f"비중 합계: {tot_weight}% (정상)")
             
             today = datetime.today()
             start_2y = today - timedelta(days=365*2)
@@ -261,7 +264,6 @@ with tab2:
             if df_port is not None and not df_port.empty:
                 daily_returns = df_port.pct_change().dropna()
                 
-                # 비중 정규화 (합이 Exact 1.0이 되도록 처리)
                 w_list = np.array([weights[t] for t in selected_port_tickers])
                 w_list = w_list / np.sum(w_list)
                 
@@ -269,7 +271,7 @@ with tab2:
                 cum_returns = (1 + port_returns).cumprod()
                 
                 st.markdown("---")
-                sub_tab1, sub_tab2, sub_tab3 = st.tabs(["📈 과거 성과 백테스트", "🔗 상관계수 히트맵", "⚖️ 리밸런싱 계산기"])
+                sub_tab1, sub_tab2, sub_tab3 = st.tabs(["과거 성과 백테스트", "상관계수 히트맵", "리밸런싱 계산기"])
                 
                 with sub_tab1:
                     total_ret = (cum_returns.iloc[-1] - 1) * 100
@@ -287,14 +289,14 @@ with tab2:
                     st.plotly_chart(fig_bt, use_container_width=True)
 
                 with sub_tab2:
-                    st.markdown("##### 🔗 종목 간 상관계수 (Correlation)")
+                    st.markdown("##### 종목 간 상관계수 (Correlation)")
                     corr_matrix = daily_returns.corr()
                     fig_corr = px.imshow(corr_matrix, text_auto=".2f", color_continuous_scale="Blues", aspect="auto")
                     fig_corr.update_layout(template="plotly_dark", height=350)
                     st.plotly_chart(fig_corr, use_container_width=True)
 
                 with sub_tab3:
-                    st.markdown("##### ⚖️ 목표 비중 맞춤 리밸런싱 주문 계산")
+                    st.markdown("##### 목표 비중 맞춤 리밸런싱 주문 계산")
                     total_inv = st.number_input("현재 포트폴리오 총 평가금액 (원)", value=10000000, step=1000000)
                     
                     rebal_data = []
@@ -317,7 +319,7 @@ with tab2:
 # TAB 3: 기술적 분석 차트
 # ----------------------------------------------------
 with tab3:
-    st.markdown('<div class="guide-box">💡 <b>기술적 차트 분석</b>: 이동평균선(MA20, MA60) 및 거래량 지표를 제공합니다.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="guide-box"><b>기술적 차트 분석</b>: 이동평균선(MA20, MA60) 및 거래량 지표를 제공합니다.</div>', unsafe_allow_html=True)
     
     if df_current is not None:
         df_current['MA20'] = df_current['Close'].rolling(window=20).mean()
@@ -340,7 +342,7 @@ with tab3:
 # TAB 4: 퀀트 & 리스크 분석
 # ----------------------------------------------------
 with tab4:
-    st.markdown('<div class="guide-box">💡 <b>퀀트 리스크 분석</b>: Sharpe Ratio, 변동성, MDD 및 위험 평가 지표입니다.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="guide-box"><b>퀀트 리스크 분석</b>: Sharpe Ratio, 변동성, MDD 및 위험 평가 지표입니다.</div>', unsafe_allow_html=True)
     
     if df_current is not None:
         daily_ret = df_current['Close'].pct_change().dropna()
@@ -361,7 +363,7 @@ with tab4:
         col_q4.metric("일일 95% VaR", f"{var_95:.2f}%")
 
         st.markdown("---")
-        st.markdown("##### 📊 일일 수익률 분포 히스토그램")
+        st.markdown("##### 일일 수익률 분포 히스토그램")
         fig_hist = px.histogram(daily_ret, nbins=50, title="수익률 변동성 분포", labels={'value': '일일 수익률'})
         fig_hist.update_layout(template="plotly_dark", height=350)
         st.plotly_chart(fig_hist, use_container_width=True)
@@ -370,18 +372,18 @@ with tab4:
 # TAB 5: 몬테카를로 AI 예측
 # ----------------------------------------------------
 with tab5:
-    st.markdown('<div class="guide-box">💡 <b>몬테카를로 확률 예측</b>: 유료 플랜(Lite/Pro)에서는 복수 종목 분할 투자 시뮬레이션을 지원합니다.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="guide-box"><b>몬테카를로 확률 예측</b>: 유료 플랜(Lite/Pro)에서는 복수 종목 분할 투자 시뮬레이션을 지원합니다.</div>', unsafe_allow_html=True)
     
     if current_plan == "Free":
-        st.info("💡 **Free 플랜 사용 중**: 단일 종목 시뮬레이션만 이용 가능합니다.")
-        st.warning("⚡ **Lite 및 Pro 멤버십으로 업그레이드하시면 여러 종목을 분할 투자한 포트폴리오 몬테카를로 시뮬레이션을 이용할 수 있습니다!**")
+        st.info("Free 플랜 사용 중: 단일 종목 시뮬레이션만 이용 가능합니다.")
+        st.warning("Lite 및 Pro 멤버십으로 업그레이드하시면 여러 종목을 분할 투자한 포트폴리오 몬테카를로 시뮬레이션을 이용할 수 있습니다!")
         
         selected_mc_tickers = [current_ticker]
         mc_weights = {current_ticker: 100.0}
     else:
-        st.success(f"🔓 **{current_plan} 멤버십 혜택**: 복수 종목 분할 투자 시뮬레이션 모드가 활성화되었습니다!")
+        st.success(f"{current_plan} 멤버십 혜택: 복수 종목 분할 투자 시뮬레이션 모드가 활성화되었습니다!")
         selected_mc_tickers = st.multiselect(
-            "🎲 시뮬레이션할 포트폴리오 종목 구성", 
+            "시뮬레이션할 포트폴리오 종목 구성", 
             list(POPULAR_STOCKS.values()) + ["GOOGL", "AMZN", "MSFT"],
             default=["AAPL", "NVDA"]
         )
@@ -401,12 +403,12 @@ with tab5:
     if selected_mc_tickers:
         col_m1, col_m2, col_m3 = st.columns([1.5, 1.5, 1])
         with col_m1:
-            init_budget = st.number_input("💰 투자 예산 (원금)", min_value=100000, value=10000000, step=1000000)
+            init_budget = st.number_input("투자 예산 (원금)", min_value=100000, value=10000000, step=1000000)
         with col_m2:
-            pred_days = st.slider("📆 예측 기간 (일수)", min_value=30, max_value=252, value=90, step=30)
+            pred_days = st.slider("예측 기간 (일수)", min_value=30, max_value=252, value=90, step=30)
         with col_m3:
             num_sims = 1000 if current_plan == "Free" else (3000 if current_plan == "Lite" else 10000)
-            st.caption(f"시뮬레이션 횟수: **{num_sims:,}회**")
+            st.caption(f"시뮬레이션 횟수: {num_sims:,}회")
             
         today = datetime.today()
         start_1y = today - timedelta(days=365)
@@ -441,12 +443,12 @@ with tab5:
             a_90 = np.percentile(final_assets, 90)
             profit_prob = (final_assets > init_budget).sum() / num_sims * 100
 
-            st.markdown(f"##### 📊 {init_budget:,.0f}원 투자 시 {pred_days}일 후 예상 자산 평가")
+            st.markdown(f"##### {init_budget:,.0f}원 투자 시 {pred_days}일 후 예상 자산 평가")
             r1, r2, r3, r4 = st.columns(4)
-            r1.metric("🎯 예상 자산 (중앙값)", f"₩{a_50:,.0f}", f"{((a_50 - init_budget)/init_budget)*100:+.1f}%")
-            r2.metric("🚀 상위 10% (Best)", f"₩{a_90:,.0f}", f"{((a_90 - init_budget)/init_budget)*100:+.1f}%")
-            r3.metric("❄️ 하위 10% (Worst)", f"₩{a_10:,.0f}", f"{((a_10 - init_budget)/init_budget)*100:+.1f}%")
-            r4.metric("📈 원금 보존/수익 확률", f"{profit_prob:.1f}%")
+            r1.metric("예상 자산 (중앙값)", f"₩{a_50:,.0f}", f"{((a_50 - init_budget)/init_budget)*100:+.1f}%")
+            r2.metric("상위 10% (Best)", f"₩{a_90:,.0f}", f"{((a_90 - init_budget)/init_budget)*100:+.1f}%")
+            r3.metric("하위 10% (Worst)", f"₩{a_10:,.0f}", f"{((a_10 - init_budget)/init_budget)*100:+.1f}%")
+            r4.metric("원금 보존/수익 확률", f"{profit_prob:.1f}%")
 
             fig_mc = go.Figure()
             sample_paths = asset_paths[:, :min(100, num_sims)]
