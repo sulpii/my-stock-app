@@ -6,9 +6,26 @@ from datetime import datetime, timedelta
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
+from supabase import create_client, Client
 
 # ----------------------------------------------------
-# 1. Page Config & CSS UI Style
+# 1. Supabase 연동 설정
+# ----------------------------------------------------
+SUPABASE_URL = "https://plhxgssdxspkjadhemkl.supabase.co"
+# 아래 키 위치에 방금 복사하신 Publishable Key를 넣어주세요.
+SUPABASE_KEY = "sb_publishable_0I4YwhaCqjE_iHIC7HIiPw_sCpF6..." 
+
+@st.cache_resource
+def init_supabase() -> Client:
+    return create_client(SUPABASE_URL, SUPABASE_KEY)
+
+try:
+    supabase = init_supabase()
+except Exception as e:
+    supabase = None
+
+# ----------------------------------------------------
+# 2. Page Config & CSS UI Style
 # ----------------------------------------------------
 st.set_page_config(
     page_title="StockLab - Quant Dashboard",
@@ -20,7 +37,6 @@ st.markdown("""
 <style>
     .main { background-color: #0B0E14; }
     
-    /* 메트릭 박스 글자 잘림 방지 핵심 스타일 */
     [data-testid="stMetricValue"] {
         font-size: 1.15rem !important;
         font-weight: 700 !important;
@@ -39,7 +55,6 @@ st.markdown("""
         border: 1px solid #334155;
     }
     
-    /* 타이틀 및 가이드 박스 */
     .sidebar-title { font-size: 1.6rem; font-weight: 800; color: #38BDF8; margin-bottom: 0px; }
     .sidebar-subtitle { font-size: 0.8rem; color: #94A3B8; margin-bottom: 15px; }
     .main-title { font-size: 2.2rem; font-weight: 800; color: #38BDF8; margin-bottom: 0px; }
@@ -63,10 +78,12 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ----------------------------------------------------
-# 2. Session State Initialize (모의투자 잔고)
+# 3. Session State Initialize & DB Sync Functions
 # ----------------------------------------------------
+if 'user' not in st.session_state:
+    st.session_state.user = None
 if 'cash' not in st.session_state:
-    st.session_state.cash = 100000000.0  # 초기 가상 현금 100,000,000원 ($100,000)
+    st.session_state.cash = 100000000.0
 if 'portfolio' not in st.session_state:
     st.session_state.portfolio = {}
 if 'trade_history' not in st.session_state:
@@ -76,8 +93,70 @@ if 'trade_qty_val' not in st.session_state:
 if 'user_plan' not in st.session_state:
     st.session_state.user_plan = "Free"
 
+def sync_user_data_from_db():
+    """로그인 시 Supabase DB에서 프로필 및 포트폴리오를 불러옵니다."""
+    if not supabase or not st.session_state.user:
+        return
+    try:
+        user_id = st.session_state.user.id
+        
+        # 프로필 조회 (예수금, 요금제)
+        res_profile = supabase.table('profiles').select('*').eq('id', user_id).execute()
+        if res_profile.data:
+            prof = res_profile.data[0]
+            st.session_state.cash = float(prof.get('cash', 100000000.0))
+            st.session_state.user_plan = prof.get('plan', 'Free')
+        else:
+            # 프로필 없으면 새로 생성
+            supabase.table('profiles').insert({
+                'id': user_id,
+                'email': st.session_state.user.email,
+                'plan': 'Free',
+                'cash': 100000000.0
+            }).execute()
+
+        # 포트폴리오 조회
+        res_port = supabase.table('user_portfolios').select('*').eq('user_id', user_id).execute()
+        new_port = {}
+        for row in res_port.data:
+            new_port[row['ticker']] = {
+                'qty': row['qty'],
+                'avg_price': float(row['avg_price'])
+            }
+        st.session_state.portfolio = new_port
+    except Exception as e:
+        st.error(f"DB 데이터 불러오기 실패: {e}")
+
+def save_profile_to_db():
+    """예수금 및 요금제 상태를 DB에 저장합니다."""
+    if supabase and st.session_state.user:
+        try:
+            supabase.table('profiles').update({
+                'cash': st.session_state.cash,
+                'plan': st.session_state.user_plan
+            }).eq('id', st.session_state.user.id).execute()
+        except Exception as e:
+            pass
+
+def save_portfolio_item_to_db(ticker, qty, avg_price):
+    """특정 종목의 보유 데이터를 DB에 저장/삭제합니다."""
+    if supabase and st.session_state.user:
+        user_id = st.session_state.user.id
+        try:
+            if qty <= 0:
+                supabase.table('user_portfolios').delete().eq('user_id', user_id).eq('ticker', ticker).execute()
+            else:
+                supabase.table('user_portfolios').upsert({
+                    'user_id': user_id,
+                    'ticker': ticker,
+                    'qty': qty,
+                    'avg_price': avg_price
+                }, on_conflict='user_id, ticker').execute()
+        except Exception as e:
+            pass
+
 # ----------------------------------------------------
-# 3. Data Fetching & Caching (인기 종목 리스트)
+# 4. Data Fetching & Caching
 # ----------------------------------------------------
 POPULAR_STOCKS = {
     "애플 (AAPL)": "AAPL",
@@ -93,7 +172,7 @@ POPULAR_STOCKS = {
     "삼성전자 (005930.KS)": "005930.KS"
 }
 
-APP_VERSION = "v1.5.0 Pro"
+APP_VERSION = "v1.6.0 Supabase"
 
 @st.cache_data(ttl=3600)
 def fetch_stock_data(ticker, start_date, end_date):
@@ -118,11 +197,49 @@ def fetch_multi_ticker_data(tickers, start_date, end_date):
         return None
 
 # ----------------------------------------------------
-# 4. Sidebar Setup
+# 5. Sidebar Setup & Authentication
 # ----------------------------------------------------
 with st.sidebar:
     st.markdown('<h2 class="sidebar-title">StockLab</h2>', unsafe_allow_html=True)
     st.markdown('<p class="sidebar-subtitle">주식 모의투자 & AI 시뮬레이터</p>', unsafe_allow_html=True)
+    st.markdown("---")
+    
+    # Supabase 회원가입 / 로그인 섹션
+    st.markdown("##### 🔐 계정 로그인 (DB 연동)")
+    if not st.session_state.user:
+        auth_mode = st.radio("인증 선택", ["로그인", "회원가입"], horizontal=True)
+        email = st.text_input("이메일", key="auth_email")
+        password = st.text_input("비밀번호", type="password", key="auth_pw")
+        
+        if auth_mode == "로그인":
+            if st.button("로그인 실행", type="primary", use_container_width=True):
+                try:
+                    res = supabase.auth.sign_in_with_password({"email": email, "password": password})
+                    st.session_state.user = res.user
+                    sync_user_data_from_db()
+                    st.success("로그인 성공!")
+                    st.rerun()
+                except Exception as err:
+                    st.error("로그인 실패: 이메일과 비밀번호를 확인해주세요.")
+        else:
+            if st.button("회원가입 실행", use_container_width=True):
+                try:
+                    res = supabase.auth.sign_up({"email": email, "password": password})
+                    st.session_state.user = res.user
+                    sync_user_data_from_db()
+                    st.success("회원가입 완료 및 로그인 되었습니다.")
+                    st.rerun()
+                except Exception as err:
+                    st.error(f"회원가입 실패: {err}")
+    else:
+        st.write(f"접속 계정: **{st.session_state.user.email}**")
+        if st.button("로그아웃", use_container_width=True):
+            supabase.auth.sign_out()
+            st.session_state.user = None
+            st.session_state.portfolio = {}
+            st.session_state.cash = 100000000.0
+            st.rerun()
+            
     st.markdown("---")
     
     st.markdown("##### 나의 멤버십 현황")
@@ -138,6 +255,7 @@ with st.sidebar:
         new_plan = st.selectbox("플랜변경", ["Free", "Lite", "Pro"], index=["Free", "Lite", "Pro"].index(current_plan), label_visibility="collapsed")
         if new_plan != current_plan:
             st.session_state.user_plan = new_plan
+            save_profile_to_db()
             st.rerun()
 
     st.markdown("---")
@@ -166,13 +284,14 @@ with st.sidebar:
             st.session_state.cash = 100000000.0
             st.session_state.portfolio = {}
             st.session_state.trade_history = []
+            save_profile_to_db()
             st.toast("예수금 및 포트폴리오가 리셋되었습니다.")
             st.rerun()
 
     st.markdown(f'<div class="version-tag">StockLab Version: <b>{APP_VERSION}</b></div>', unsafe_allow_html=True)
 
 # ----------------------------------------------------
-# 5. Main Body & Data Fetching
+# 6. Main Body & Data Fetching
 # ----------------------------------------------------
 st.markdown('<h1 class="main-title">StockLab</h1>', unsafe_allow_html=True)
 st.markdown(f'<p class="main-subtitle">선택 종목: <b>{ticker}</b> | 퀀트 분석 & 모의투자 대시보드</p>', unsafe_allow_html=True)
@@ -190,7 +309,6 @@ df['STD20'] = df['Close'].rolling(window=20).std()
 df['UpperBB'] = df['SMA20'] + (df['STD20'] * 2)
 df['LowerBB'] = df['SMA20'] - (df['STD20'] * 2)
 
-# RSI
 delta = df['Close'].diff()
 gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
 loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
@@ -198,7 +316,7 @@ rs = gain / loss
 df['RSI'] = 100 - (100 / (1 + rs))
 
 # ----------------------------------------------------
-# 6. Key Metrics Top Display
+# 7. Key Metrics Top Display
 # ----------------------------------------------------
 curr_price = float(df['Close'].iloc[-1])
 prev_price = float(df['Close'].iloc[-2])
@@ -219,7 +337,7 @@ m4.metric("52주 최저가", f"{unit}{low_52:,.2f}")
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ----------------------------------------------------
-# 7. Tab Navigation
+# 8. Tab Navigation
 # ----------------------------------------------------
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "모의주식 거래 & 자산", 
@@ -231,7 +349,7 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
 ])
 
 # ----------------------------------------------------
-# TAB 1: 모의주식 거래 & 자산
+# TAB 1: 모의주식 거래 & 자산 (DB 연동 반영)
 # ----------------------------------------------------
 with tab1:
     st.markdown('<div class="guide-box"><b>가상 모의투자</b>: 가상 예수금으로 실시간 주가를 매수/매도하며 잔고와 수익률을 관리합니다.</div>', unsafe_allow_html=True)
@@ -281,6 +399,10 @@ with tab1:
                     new_avg = ((held_qty * avg_buy_p) + total_cost) / new_qty
                     st.session_state.portfolio[ticker] = {'qty': new_qty, 'avg_price': new_avg}
                     
+                    # DB 자동 동기화
+                    save_profile_to_db()
+                    save_portfolio_item_to_db(ticker, new_qty, new_avg)
+                    
                     st.session_state.trade_history.append({
                         '시간': datetime.now().strftime('%H:%M:%S'),
                         '종목': ticker,
@@ -303,6 +425,10 @@ with tab1:
                     else:
                         st.session_state.portfolio[ticker]['qty'] = new_qty
                         
+                    # DB 자동 동기화
+                    save_profile_to_db()
+                    save_portfolio_item_to_db(ticker, new_qty, avg_buy_p)
+                    
                     st.session_state.trade_history.append({
                         '시간': datetime.now().strftime('%H:%M:%S'),
                         '종목': ticker,
@@ -335,7 +461,7 @@ with tab1:
         st.dataframe(pd.DataFrame(st.session_state.trade_history).iloc[::-1], use_container_width=True)
 
 # ----------------------------------------------------
-# TAB 2: 포트폴리오 분석기 (px.line 오류 수정 처리)
+# TAB 2: 포트폴리오 분석기
 # ----------------------------------------------------
 with tab2:
     st.markdown('<div class="guide-box"><b>포트폴리오 분석</b>: 선택한 종목들의 과거 백테스팅, 상관관계 히트맵 및 리밸런싱 계산을 지원합니다.</div>', unsafe_allow_html=True)
@@ -366,7 +492,7 @@ with tab2:
             if df_port is not None and not df_port.empty:
                 daily_returns = df_port.pct_change().dropna()
                 w_list = np.array([weights[t] for t in selected_port_tickers])
-                w_list = w_list / np.sum(w_list)  # 자동 정규화
+                w_list = w_list / np.sum(w_list)
                 
                 port_returns = (daily_returns * w_list).sum(axis=1)
                 cum_returns = (1 + port_returns).cumprod()
@@ -384,7 +510,6 @@ with tab2:
                     b2.metric("연평균 수익률 (CAGR)", f"{cagr:.2f}%")
                     b3.metric("최대 낙폭 (MDD)", f"{mdd:.2f}%")
                     
-                    # Plotly Graph Objects로 안전하게 차트 생성
                     fig_bt = go.Figure()
                     fig_bt.add_trace(go.Scatter(x=cum_returns.index, y=cum_returns.values, mode='lines', name='포트폴리오', line=dict(color='#38BDF8', width=2)))
                     fig_bt.update_layout(template="plotly_dark", height=350, title="포트폴리오 누적 성과 추이", yaxis_title="자산 가치 (1.0 기준)")
@@ -429,7 +554,6 @@ with tab3:
     fig.add_trace(go.Scatter(x=df.index, y=df['UpperBB'], mode='lines', name='Upper BB', line=dict(color='rgba(255,255,255,0.3)', dash='dash')), row=1, col=1)
     fig.add_trace(go.Scatter(x=df.index, y=df['LowerBB'], mode='lines', name='Lower BB', line=dict(color='rgba(255,255,255,0.3)', dash='dash')), row=1, col=1)
     
-    # AI 매수/매도 마커 (골든/데드크로스)
     buy_signals = df[(df['SMA20'] > df['SMA60']) & (df['SMA20'].shift(1) <= df['SMA60'].shift(1))]
     sell_signals = df[(df['SMA20'] < df['SMA60']) & (df['SMA20'].shift(1) >= df['SMA60'].shift(1))]
     
