@@ -2,737 +2,564 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import yfinance as yf
-from datetime import datetime, timedelta
 import plotly.graph_objects as go
-import plotly.express as px
 from plotly.subplots import make_subplots
+import datetime
 from supabase import create_client, Client
 
-# ----------------------------------------------------
-# 1. Supabase 연동 설정
-# ----------------------------------------------------
-SUPABASE_URL = "https://plhxgssdxspkjadhemkl.supabase.co"
-# 아래 키 위치에 방금 복사하신 Publishable Key를 넣어주세요.
-SUPABASE_KEY = "sb_publishable_0I4YwhaCqjE_iHIC7HIiPw_sCpF6..." 
-
-@st.cache_resource
-def init_supabase() -> Client:
-    return create_client(SUPABASE_URL, SUPABASE_KEY)
-
-try:
-    supabase = init_supabase()
-except Exception as e:
-    supabase = None
-
-# ----------------------------------------------------
-# 2. Page Config & CSS UI Style
-# ----------------------------------------------------
+# ==========================================
+# 0. PAGE CONFIGURATION & CUSTOM STYLES
+# ==========================================
 st.set_page_config(
-    page_title="StockLab - Quant Dashboard",
+    page_title="StockLab - Quant & AI Paper Trading",
+    page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
+# Supabase DB Settings
+SUPABASE_URL = "https://aenomakwawdfikftscer.supabase.co"
+# TODO: 본인의 Supabase Publishable (anon public) Key를 아래에 입력해 주세요.
+SUPABASE_KEY = "여기에_Publishable_키를_입력하세요" 
+
+@st.cache_resource
+def init_supabase():
+    try:
+        if SUPABASE_KEY and SUPABASE_KEY != "여기에_Publishable_키를_입력하세요":
+            return create_client(SUPABASE_URL, SUPABASE_KEY)
+        return None
+    except Exception as e:
+        return None
+
+supabase: Client = init_supabase()
+
 st.markdown("""
 <style>
-    .main { background-color: #0B0E14; }
-    
-    [data-testid="stMetricValue"] {
-        font-size: 1.15rem !important;
-        font-weight: 700 !important;
-        white-space: normal !important;
-        word-break: break-all !important;
-        line-height: 1.2 !important;
-    }
-    [data-testid="stMetricLabel"] {
-        font-size: 0.8rem !important;
-        color: #94A3B8 !important;
-    }
     .stMetric {
-        background-color: #1E293B;
-        padding: 12px;
-        border-radius: 8px;
-        border: 1px solid #334155;
-    }
-    
-    .sidebar-title { font-size: 1.6rem; font-weight: 800; color: #38BDF8; margin-bottom: 0px; }
-    .sidebar-subtitle { font-size: 0.8rem; color: #94A3B8; margin-bottom: 15px; }
-    .main-title { font-size: 2.2rem; font-weight: 800; color: #38BDF8; margin-bottom: 0px; }
-    .main-subtitle { font-size: 0.95rem; color: #94A3B8; margin-bottom: 20px; }
-    
-    .badge-free { background-color: #334155; color: #94A3B8; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; }
-    .badge-lite { background-color: #0284C7; color: #FFFFFF; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; }
-    .badge-pro { background: linear-gradient(135deg, #6366F1 0%, #A855F7 100%); color: #FFFFFF; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; }
-    
-    .guide-box {
-        background-color: #1E293B;
-        border-left: 4px solid #38BDF8;
+        background-color: #1E222D;
         padding: 12px 16px;
-        border-radius: 4px;
-        margin-bottom: 20px;
-        font-size: 0.9rem;
-        color: #CBD5E1;
+        border-radius: 8px;
+        border: 1px solid #2A2E39;
     }
-    .version-tag { font-size: 0.75rem; color: #64748B; text-align: center; margin-top: 20px; }
+    .stMetric label {
+        font-size: 0.85rem !important;
+        color: #787B86 !important;
+    }
+    .stMetric div[data-testid="stMetricValue"] {
+        font-size: 1.25rem !important;
+        font-weight: 700 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+    .badge-pro {
+        background-color: #FF4654;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: bold;
+    }
+    .badge-lite {
+        background-color: #2962FF;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: bold;
+    }
+    .badge-free {
+        background-color: #787B86;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: bold;
+    }
+    .disclaimer-box {
+        background-color: #2A2E39;
+        border-left: 4px solid #FF9800;
+        padding: 10px 14px;
+        border-radius: 4px;
+        font-size: 0.82rem;
+        color: #B2B5BE;
+        margin-bottom: 15px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# ----------------------------------------------------
-# 3. Session State Initialize & DB Sync Functions
-# ----------------------------------------------------
-if 'user' not in st.session_state:
-    st.session_state.user = None
-if 'cash' not in st.session_state:
-    st.session_state.cash = 100000000.0
-if 'portfolio' not in st.session_state:
+# Session State Initialization
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+if "user_email" not in st.session_state:
+    st.session_state.user_email = "Guest"
+if "user_id" not in st.session_state:
+    st.session_state.user_id = None
+if "user_tier" not in st.session_state:
+    st.session_state.user_tier = "Free"
+if "cash_balance" not in st.session_state:
+    st.session_state.cash_balance = 100000.0
+if "portfolio" not in st.session_state:
     st.session_state.portfolio = {}
-if 'trade_history' not in st.session_state:
+if "trade_history" not in st.session_state:
     st.session_state.trade_history = []
-if 'trade_qty_val' not in st.session_state:
-    st.session_state.trade_qty_val = 10
-if 'user_plan' not in st.session_state:
-    st.session_state.user_plan = "Free"
 
-def sync_user_data_from_db():
-    """로그인 시 Supabase DB에서 프로필 및 포트폴리오를 불러옵니다."""
-    if not supabase or not st.session_state.user:
-        return
-    try:
-        user_id = st.session_state.user.id
-        
-        # 프로필 조회 (예수금, 요금제)
-        res_profile = supabase.table('profiles').select('*').eq('id', user_id).execute()
-        if res_profile.data:
-            prof = res_profile.data[0]
-            st.session_state.cash = float(prof.get('cash', 100000000.0))
-            st.session_state.user_plan = prof.get('plan', 'Free')
-        else:
-            # 프로필 없으면 새로 생성
-            supabase.table('profiles').insert({
-                'id': user_id,
-                'email': st.session_state.user.email,
-                'plan': 'Free',
-                'cash': 100000000.0
-            }).execute()
-
-        # 포트폴리오 조회
-        res_port = supabase.table('user_portfolios').select('*').eq('user_id', user_id).execute()
-        new_port = {}
-        for row in res_port.data:
-            new_port[row['ticker']] = {
-                'qty': row['qty'],
-                'avg_price': float(row['avg_price'])
+# Helper: Sync to Supabase
+def save_user_data_to_db():
+    if st.session_state.authenticated and st.session_state.user_id and supabase:
+        try:
+            data = {
+                "user_id": st.session_state.user_id,
+                "tier": st.session_state.user_tier,
+                "cash_balance": float(st.session_state.cash_balance),
+                "portfolio": st.session_state.portfolio,
+                "trade_history": st.session_state.trade_history
             }
-        st.session_state.portfolio = new_port
-    except Exception as e:
-        st.error(f"DB 데이터 불러오기 실패: {e}")
-
-def save_profile_to_db():
-    """예수금 및 요금제 상태를 DB에 저장합니다."""
-    if supabase and st.session_state.user:
-        try:
-            supabase.table('profiles').update({
-                'cash': st.session_state.cash,
-                'plan': st.session_state.user_plan
-            }).eq('id', st.session_state.user.id).execute()
+            supabase.table("user_data").upsert(data).execute()
         except Exception as e:
             pass
 
-def save_portfolio_item_to_db(ticker, qty, avg_price):
-    """특정 종목의 보유 데이터를 DB에 저장/삭제합니다."""
-    if supabase and st.session_state.user:
-        user_id = st.session_state.user.id
+def load_user_data_from_db(user_id):
+    if supabase:
         try:
-            if qty <= 0:
-                supabase.table('user_portfolios').delete().eq('user_id', user_id).eq('ticker', ticker).execute()
+            res = supabase.table("user_data").select("*").eq("user_id", user_id).execute()
+            if res.data and len(res.data) > 0:
+                row = res.data[0]
+                st.session_state.user_tier = row.get("tier", "Free")
+                st.session_state.cash_balance = float(row.get("cash_balance", 100000.0))
+                st.session_state.portfolio = row.get("portfolio", {})
+                st.session_state.trade_history = row.get("trade_history", [])
+        except Exception as e:
+            pass
+
+# ==========================================
+# 1. SIDEBAR & AUTHENTICATION
+# ==========================================
+with st.sidebar:
+    st.title("StockLab")
+    
+    tier_badge = f'<span class="badge-{st.session_state.user_tier.lower()}">{st.session_state.user_tier}</span>'
+    st.markdown(f"**현재 계정:** {st.session_state.user_email} {tier_badge}", unsafe_allow_html=True)
+    
+    # 간편 서비스 모드/플랜 전환 (팝업 없이 즉시 변경)
+    selected_tier = st.selectbox(
+        "⚡ 서비스 모드 전환", 
+        ["Free", "Lite", "Pro"], 
+        index=["Free", "Lite", "Pro"].index(st.session_state.user_tier)
+    )
+    if selected_tier != st.session_state.user_tier:
+        st.session_state.user_tier = selected_tier
+        save_user_data_to_db()
+        st.rerun()
+
+    st.divider()
+    
+    st.subheader("🔐 계정 관리")
+    auth_mode = st.radio("인증 선택", ["로그인", "회원가입"], key="auth_mode_radio")
+    
+    email_input = st.text_input("이메일 주소", key="auth_email")
+    password_input = st.text_input("비밀번호", type="password", key="auth_password")
+    
+    if auth_mode == "회원가입":
+        if st.button("회원가입 실행", use_container_width=True):
+            if not email_input or not password_input:
+                st.error("이메일과 비밀번호를 모두 입력해 주세요.")
+            elif not supabase:
+                st.error("Supabase API 키 설정이 올바르지 않습니다.")
             else:
-                supabase.table('user_portfolios').upsert({
-                    'user_id': user_id,
-                    'ticker': ticker,
-                    'qty': qty,
-                    'avg_price': avg_price
-                }, on_conflict='user_id, ticker').execute()
-        except Exception as e:
-            pass
+                try:
+                    res = supabase.auth.sign_up({"email": email_input, "password": password_input})
+                    if res.user:
+                        st.session_state.authenticated = True
+                        st.session_state.user_email = res.user.email
+                        st.session_state.user_id = res.user.id
+                        save_user_data_to_db()
+                        st.success("회원가입 완료 및 로그인 성공!")
+                        st.rerun()
+                    else:
+                        st.error("회원가입 처리 중 오류가 발생했습니다.")
+                except Exception as e:
+                    st.error(f"회원가입 실패: {str(e)}")
 
-# ----------------------------------------------------
-# 4. Data Fetching & Caching
-# ----------------------------------------------------
-POPULAR_STOCKS = {
-    "애플 (AAPL)": "AAPL",
-    "엔비디아 (NVDA)": "NVDA",
-    "테슬라 (TSLA)": "TSLA",
-    "마이크로소프트 (MSFT)": "MSFT",
-    "아마존 (AMZN)": "AMZN",
-    "구글 (GOOGL)": "GOOGL",
-    "S&P500 ETF (SPY)": "SPY",
-    "TQQQ (나스닥 3배)": "TQQQ",
-    "SOXL (반도체 3배)": "SOXL",
-    "비트코인 (BTC-USD)": "BTC-USD",
-    "삼성전자 (005930.KS)": "005930.KS"
-}
+    elif auth_mode == "로그인":
+        if st.button("로그인 실행", use_container_width=True):
+            if not email_input or not password_input:
+                st.error("이메일과 비밀번호를 입력해 주세요.")
+            elif not supabase:
+                st.error("Supabase API 키 설정이 올바르지 않습니다.")
+            else:
+                try:
+                    res = supabase.auth.sign_in_with_password({"email": email_input, "password": password_input})
+                    if res.user:
+                        st.session_state.authenticated = True
+                        st.session_state.user_email = res.user.email
+                        st.session_state.user_id = res.user.id
+                        load_user_data_from_db(res.user.id)
+                        st.success("로그인 성공!")
+                        st.rerun()
+                    else:
+                        st.error("이메일 또는 비밀번호가 올바르지 않습니다.")
+                except Exception as e:
+                    st.error(f"로그인 실패: {str(e)}")
 
-APP_VERSION = "v1.6.0 Supabase"
+    if st.session_state.authenticated:
+        if st.button("로그아웃", use_container_width=True):
+            if supabase:
+                try:
+                    supabase.auth.sign_out()
+                except:
+                    pass
+            st.session_state.authenticated = False
+            st.session_state.user_email = "Guest"
+            st.session_state.user_id = None
+            st.session_state.user_tier = "Free"
+            st.session_state.cash_balance = 100000.0
+            st.session_state.portfolio = {}
+            st.session_state.trade_history = []
+            st.rerun()
 
+    st.divider()
+    
+    st.subheader("⚙️ 종목 선택")
+    popular_tickers = {
+        "Apple (AAPL)": "AAPL",
+        "Microsoft (MSFT)": "MSFT",
+        "NVIDIA (NVDA)": "NVDA",
+        "Tesla (TSLA)": "TSLA",
+        "ProShares 3x QQQ (TQQQ)": "TQQQ",
+        "Direxion 3x Semiconductor (SOXL)": "SOXL",
+        "Bitcoin USD (BTC-USD)": "BTC-USD",
+        "삼성전자 (005930.KS)": "005930.KS"
+    }
+    
+    selected_name = st.selectbox("인기 종목 바로선택", list(popular_tickers.keys()))
+    symbol = st.text_input("티커 직접 입력", popular_tickers[selected_name]).upper().strip()
+    
+    # 시작일 선택 제거 ➔ 최근 1년 자동 세팅
+    end_date = datetime.date.today()
+    start_date = end_date - datetime.timedelta(days=365)
+    st.caption("ℹ️ 최근 1년 데이터로 자동 분석됩니다.")
+
+# Fetch Data
 @st.cache_data(ttl=3600)
-def fetch_stock_data(ticker, start_date, end_date):
+def load_stock_data(ticker, start, end):
     try:
-        df = yf.download(ticker, start=start_date, end=end_date, progress=False)
+        df = yf.download(ticker, start=start, end=end)
         if df.empty:
             return None
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
         return df
-    except Exception:
+    except Exception as e:
         return None
 
-@st.cache_data(ttl=3600)
-def fetch_multi_ticker_data(tickers, start_date, end_date):
-    try:
-        df = yf.download(tickers, start=start_date, end=end_date, progress=False)['Close']
-        if df.empty:
-            return None
-        return df
-    except Exception:
-        return None
+df_stock = load_stock_data(symbol, start_date, end_date)
 
-# ----------------------------------------------------
-# 5. Sidebar Setup & Authentication
-# ----------------------------------------------------
-with st.sidebar:
-    st.markdown('<h2 class="sidebar-title">StockLab</h2>', unsafe_allow_html=True)
-    st.markdown('<p class="sidebar-subtitle">주식 모의투자 & AI 시뮬레이터</p>', unsafe_allow_html=True)
-    st.markdown("---")
-    
-    # Supabase 회원가입 / 로그인 섹션
-    st.markdown("##### 🔐 계정 로그인 (DB 연동)")
-    if not st.session_state.user:
-        auth_mode = st.radio("인증 선택", ["로그인", "회원가입"], horizontal=True)
-        email = st.text_input("이메일", key="auth_email")
-        password = st.text_input("비밀번호", type="password", key="auth_pw")
-        
-        if auth_mode == "로그인":
-            if st.button("로그인 실행", type="primary", use_container_width=True):
-                try:
-                    res = supabase.auth.sign_in_with_password({"email": email, "password": password})
-                    st.session_state.user = res.user
-                    sync_user_data_from_db()
-                    st.success("로그인 성공!")
-                    st.rerun()
-                except Exception as err:
-                    st.error("로그인 실패: 이메일과 비밀번호를 확인해주세요.")
-        else:
-            if st.button("회원가입 실행", use_container_width=True):
-                try:
-                    res = supabase.auth.sign_up({"email": email, "password": password})
-                    st.session_state.user = res.user
-                    sync_user_data_from_db()
-                    st.success("회원가입 완료 및 로그인 되었습니다.")
-                    st.rerun()
-                except Exception as err:
-                    st.error(f"회원가입 실패: {err}")
-    else:
-        st.write(f"접속 계정: **{st.session_state.user.email}**")
-        if st.button("로그아웃", use_container_width=True):
-            supabase.auth.sign_out()
-            st.session_state.user = None
-            st.session_state.portfolio = {}
-            st.session_state.cash = 100000000.0
-            st.rerun()
-            
-    st.markdown("---")
-    
-    st.markdown("##### 나의 멤버십 현황")
-    current_plan = st.session_state.user_plan
-    
-    plan_col1, plan_col2 = st.columns([2, 1])
-    with plan_col1:
-        if current_plan == "Free": st.markdown('<span class="badge-free">Free 모드</span>', unsafe_allow_html=True)
-        elif current_plan == "Lite": st.markdown('<span class="badge-lite">Lite 모드</span>', unsafe_allow_html=True)
-        else: st.markdown('<span class="badge-pro">Pro 모드</span>', unsafe_allow_html=True)
+# ==========================================
+# 2. MAIN HEADER & SUMMARY METRICS
+# ==========================================
+st.title("StockLab Quant & Paper Trading Platform")
 
-    with plan_col2:
-        new_plan = st.selectbox("플랜변경", ["Free", "Lite", "Pro"], index=["Free", "Lite", "Pro"].index(current_plan), label_visibility="collapsed")
-        if new_plan != current_plan:
-            st.session_state.user_plan = new_plan
-            save_profile_to_db()
-            st.rerun()
+if df_stock is not None and not df_stock.empty:
+    current_price = float(df_stock['Close'].iloc[-1])
+    prev_price = float(df_stock['Close'].iloc[-2]) if len(df_stock) > 1 else current_price
+    price_change = current_price - prev_price
+    pct_change = (price_change / prev_price) * 100
 
-    st.markdown("---")
-    st.markdown("##### 분석 자산 설정")
-    
-    selected_name = st.selectbox("인기 추천 종목 퀵 선택", list(POPULAR_STOCKS.keys()))
-    custom_ticker = st.text_input("직접 Ticker 입력 (선택)", value="").strip().upper()
-    
-    ticker = custom_ticker if custom_ticker else POPULAR_STOCKS[selected_name]
-    
-    today = datetime.today()
-    start_default = today - timedelta(days=365)
-    
-    start_date = st.date_input("시작일", start_default)
-    end_date = st.date_input("종료일", today)
-    
-    st.markdown("---")
-    
-    col_sb1, col_sb2 = st.columns(2)
-    with col_sb1:
-        if st.button("새로고침", use_container_width=True):
-            st.cache_data.clear()
-            st.rerun()
-    with col_sb2:
-        if st.button("잔고 리셋", use_container_width=True):
-            st.session_state.cash = 100000000.0
-            st.session_state.portfolio = {}
-            st.session_state.trade_history = []
-            save_profile_to_db()
-            st.toast("예수금 및 포트폴리오가 리셋되었습니다.")
-            st.rerun()
+    # Calculate Portfolio Valuation
+    total_stock_val = 0.0
+    for t_sym, qty in st.session_state.portfolio.items():
+        if qty > 0:
+            t_df = load_stock_data(t_sym, datetime.date.today() - datetime.timedelta(days=7), datetime.date.today())
+            if t_df is not None and not t_df.empty:
+                total_stock_val += float(t_df['Close'].iloc[-1]) * qty
 
-    st.markdown(f'<div class="version-tag">StockLab Version: <b>{APP_VERSION}</b></div>', unsafe_allow_html=True)
+    total_asset = st.session_state.cash_balance + total_stock_val
+    profit_loss = total_asset - 100000.0
+    profit_loss_pct = (profit_loss / 100000.0) * 100
 
-# ----------------------------------------------------
-# 6. Main Body & Data Fetching
-# ----------------------------------------------------
-st.markdown('<h1 class="main-title">StockLab</h1>', unsafe_allow_html=True)
-st.markdown(f'<p class="main-subtitle">선택 종목: <b>{ticker}</b> | 퀀트 분석 & 모의투자 대시보드</p>', unsafe_allow_html=True)
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric(f"선택 종목 ({symbol})", f"${current_price:,.2f}", f"{price_change:+,.2f} ({pct_change:+.2f}%)")
+    m2.metric("보유 예수금 (Cash)", f"${st.session_state.cash_balance:,.2f}")
+    m3.metric("총 평가 자산 (Total)", f"${total_asset:,.2f}")
+    m4.metric("누적 수익률 (P&L)", f"${profit_loss:+,.2f}", f"{profit_loss_pct:+.2f}%")
+else:
+    st.warning(f"'{symbol}' 종목 데이터를 불러올 수 없습니다. 티커를 확인해 주세요.")
 
-df = fetch_stock_data(ticker, start_date, end_date)
+st.divider()
 
-if df is None or len(df) < 20:
-    st.warning("데이터가 부족하거나 불러올 수 없습니다. 날짜 범위나 Ticker를 확인해주세요.")
-    st.stop()
-
-# 보조 지표 계산
-df['SMA20'] = df['Close'].rolling(window=20).mean()
-df['SMA60'] = df['Close'].rolling(window=60).mean()
-df['STD20'] = df['Close'].rolling(window=20).std()
-df['UpperBB'] = df['SMA20'] + (df['STD20'] * 2)
-df['LowerBB'] = df['SMA20'] - (df['STD20'] * 2)
-
-delta = df['Close'].diff()
-gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-rs = gain / loss
-df['RSI'] = 100 - (100 / (1 + rs))
-
-# ----------------------------------------------------
-# 7. Key Metrics Top Display
-# ----------------------------------------------------
-curr_price = float(df['Close'].iloc[-1])
-prev_price = float(df['Close'].iloc[-2])
-price_chg = curr_price - prev_price
-price_chg_pct = (price_chg / prev_price) * 100
-
-high_52 = df['High'].max()
-low_52 = df['Low'].min()
-
-unit = "₩" if ticker.endswith(".KS") else "$"
-
-m1, m2, m3, m4 = st.columns(4)
-m1.metric("현재가", f"{unit}{curr_price:,.2f}", f"{price_chg_pct:+.2f}%")
-m2.metric("보유 예수금 (잔고)", f"₩{st.session_state.cash:,.0f}")
-m3.metric("52주 최고가", f"{unit}{high_52:,.2f}")
-m4.metric("52주 최저가", f"{unit}{low_52:,.2f}")
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-# ----------------------------------------------------
-# 8. Tab Navigation
-# ----------------------------------------------------
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-    "모의주식 거래 & 자산", 
-    "포트폴리오 분석기",
-    "기술적 분석 차트", 
-    "AI 매매 신호", 
-    "퀀트 리스크 분석", 
-    "몬테카를로 AI 예측 (Pro)"
+# ==========================================
+# 3. MAIN TABS
+# ==========================================
+t1, t2, t3, t4, t5, t6 = st.tabs([
+    "💰 모의주식 거래", 
+    "📊 포트폴리오 분석", 
+    "📈 기술적 차트", 
+    "🤖 AI 매매 마커", 
+    "⚡ 퀀트 리스크", 
+    "🔮 몬테카를로 (Pro)"
 ])
 
-# ----------------------------------------------------
-# TAB 1: 모의주식 거래 & 자산 (DB 연동 반영)
-# ----------------------------------------------------
-with tab1:
-    st.markdown('<div class="guide-box"><b>가상 모의투자</b>: 가상 예수금으로 실시간 주가를 매수/매도하며 잔고와 수익률을 관리합니다.</div>', unsafe_allow_html=True)
-    
-    held_qty = st.session_state.portfolio.get(ticker, {}).get('qty', 0)
-    avg_buy_p = st.session_state.portfolio.get(ticker, {}).get('avg_price', 0.0)
-    
-    eval_val = held_qty * curr_price
-    buy_val = held_qty * avg_buy_p
-    pnl = eval_val - buy_val
-    pnl_pct = (pnl / buy_val * 100) if buy_val > 0 else 0.0
-
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("보유 현금 예수금", f"₩{st.session_state.cash:,.0f}")
-    c2.metric(f"보유 수량 ({ticker})", f"{held_qty:,} 주")
-    c3.metric("평균 매수 단가", f"{unit}{avg_buy_p:,.2f}")
-    c4.metric("평가 손익", f"{unit}{pnl:,.2f}", f"{pnl_pct:+.2f}%")
-
-    st.markdown("---")
-    
-    col_trade, col_port = st.columns([1, 1])
-    
-    with col_trade:
-        st.write(f"##### 매수/매도 주문 | {ticker} 현재가: {unit}{curr_price:,.2f}")
-        
-        st.caption("빠른 수량 선택")
-        btn_q1, btn_q2, btn_q3, btn_q4 = st.columns(4)
-        if btn_q1.button("+10주"): st.session_state.trade_qty_val += 10
-        if btn_q2.button("+50주"): st.session_state.trade_qty_val += 50
-        if btn_q3.button("+100주"): st.session_state.trade_qty_val += 100
-        if btn_q4.button("전액 매수"):
-            st.session_state.trade_qty_val = int(st.session_state.cash // curr_price) if curr_price > 0 else 1
+# ------------------------------------------
+# TAB 1: Paper Trading
+# ------------------------------------------
+with t1:
+    st.subheader("모의주식 매수 / 매도")
+    if df_stock is not None and not df_stock.empty:
+        c1, c2 = st.columns([1, 1])
+        with c1:
+            st.markdown(f"**현재가:** `${current_price:,.2f}`")
+            order_qty = st.number_input("수량 (주)", min_value=1, value=1, step=1, key="order_qty_input")
             
-        trade_qty = st.number_input("주문 수량(주)", min_value=1, value=max(1, st.session_state.trade_qty_val), step=1)
-        total_cost = trade_qty * curr_price
-        st.caption(f"총 주문 금액: {unit}{total_cost:,.2f}")
-        
-        btn_buy, btn_sell = st.columns(2)
-        
-        with btn_buy:
-            if st.button("매수하기", type="primary", use_container_width=True):
-                if st.session_state.cash < total_cost:
-                    st.error("잔고가 부족합니다.")
-                else:
-                    st.session_state.cash -= total_cost
-                    new_qty = held_qty + trade_qty
-                    new_avg = ((held_qty * avg_buy_p) + total_cost) / new_qty
-                    st.session_state.portfolio[ticker] = {'qty': new_qty, 'avg_price': new_avg}
-                    
-                    # DB 자동 동기화
-                    save_profile_to_db()
-                    save_portfolio_item_to_db(ticker, new_qty, new_avg)
-                    
-                    st.session_state.trade_history.append({
-                        '시간': datetime.now().strftime('%H:%M:%S'),
-                        '종목': ticker,
-                        '구분': '매수',
-                        '수량': trade_qty,
-                        '체결가': f"{unit}{curr_price:,.2f}"
-                    })
-                    st.success(f"{ticker} {trade_qty}주 매수 완료!")
-                    st.rerun()
+            b1, b2, b3, b4 = st.columns(4)
+            if b1.button("+10주"): order_qty = 10
+            if b2.button("+50주"): order_qty = 50
+            if b3.button("+100주"): order_qty = 100
+            if b4.button("전액매수"): 
+                order_qty = max(1, int(st.session_state.cash_balance // current_price))
 
-        with btn_sell:
-            if st.button("매도하기", use_container_width=True):
-                if held_qty < trade_qty:
+            total_cost = order_qty * current_price
+            st.caption(f"예상 거래 금액: `${total_cost:,.2f}`")
+            
+            btn_buy, btn_sell = st.columns(2)
+            if btn_buy.button("🟢 매수 실행", use_container_width=True):
+                if st.session_state.cash_balance >= total_cost:
+                    st.session_state.cash_balance -= total_cost
+                    st.session_state.portfolio[symbol] = st.session_state.portfolio.get(symbol, 0) + order_qty
+                    st.session_state.trade_history.append({
+                        "time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "type": "BUY",
+                        "symbol": symbol,
+                        "qty": order_qty,
+                        "price": current_price,
+                        "total": total_cost
+                    })
+                    save_user_data_to_db()
+                    st.success(f"{symbol} {order_qty}주 매수 완료!")
+                    st.rerun()
+                else:
+                    st.error("예수금이 부족합니다.")
+            
+            if btn_sell.button("🔴 매도 실행", use_container_width=True):
+                current_qty = st.session_state.portfolio.get(symbol, 0)
+                if current_qty >= order_qty:
+                    st.session_state.cash_balance += total_cost
+                    st.session_state.portfolio[symbol] -= order_qty
+                    if st.session_state.portfolio[symbol] == 0:
+                        del st.session_state.portfolio[symbol]
+                    st.session_state.trade_history.append({
+                        "time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "type": "SELL",
+                        "symbol": symbol,
+                        "qty": order_qty,
+                        "price": current_price,
+                        "total": total_cost
+                    })
+                    save_user_data_to_db()
+                    st.success(f"{symbol} {order_qty}주 매도 완료!")
+                    st.rerun()
+                else:
                     st.error("보유 수량이 부족합니다.")
-                else:
-                    st.session_state.cash += total_cost
-                    new_qty = held_qty - trade_qty
-                    if new_qty == 0:
-                        del st.session_state.portfolio[ticker]
-                    else:
-                        st.session_state.portfolio[ticker]['qty'] = new_qty
-                        
-                    # DB 자동 동기화
-                    save_profile_to_db()
-                    save_portfolio_item_to_db(ticker, new_qty, avg_buy_p)
+
+        with c2:
+            st.markdown("### 💼 현재 보유 포트폴리오")
+            if st.session_state.portfolio:
+                pf_data = []
+                for sym, qty in st.session_state.portfolio.items():
+                    pf_data.append({"종목": sym, "보유 수량": f"{qty} 주"})
+                st.dataframe(pd.DataFrame(pf_data), use_container_width=True)
+            else:
+                st.info("현재 보유 중인 주식이 없습니다.")
+
+            st.markdown("### 📜 최근 거래 내역")
+            if st.session_state.trade_history:
+                st.dataframe(pd.DataFrame(st.session_state.trade_history).iloc[::-1], use_container_width=True)
+            else:
+                st.info("거래 내역이 없습니다.")
+
+# ------------------------------------------
+# TAB 2: Portfolio Analyzer
+# ------------------------------------------
+with t2:
+    st.subheader("포트폴리오 비중 분석 & 예산 설계")
+    
+    symbols_input = st.text_input("분석할 티커 목록 (쉼표 구분)", "AAPL, MSFT, NVDA, TSLA")
+    tickers_list = [t.strip().upper() for t in symbols_input.split(",") if t.strip()]
+
+    # 총 투자 예산 (시드머니) 입력 추가
+    total_budget = st.number_input("총 투자 예산 ($)", min_value=100.0, value=10000.0, step=500.0)
+
+    if len(tickers_list) >= 2:
+        raw_weights = []
+        st.write("각 종목 비중 입력 (%)")
+        cols = st.columns(len(tickers_list))
+        default_w = round(100.0 / len(tickers_list), 2)
+        for i, t_name in enumerate(tickers_list):
+            w = cols[i].number_input(f"{t_name} (%)", value=default_w, min_value=0.0, max_value=100.0, step=1.0)
+            raw_weights.append(w)
+
+        sum_w = sum(raw_weights)
+        if sum_w <= 0:
+            st.error("비중의 합은 0보다 커야 합니다.")
+        else:
+            norm_weights = [w / sum_w for w in raw_weights]
+            
+            # 종목별 구매 금액 및 수량 자동 계산
+            df_multi = yf.download(tickers_list, start=start_date, end=end_date)['Close']
+            if isinstance(df_multi, pd.DataFrame) and not df_multi.empty:
+                st.markdown("### 💵 종목별 추천 매수 금액 및 주식 수")
+                allocation_data = []
+                for i, t_name in enumerate(tickers_list):
+                    allocated_money = total_budget * norm_weights[i]
+                    last_price = float(df_multi[t_name].iloc[-1]) if t_name in df_multi.columns else 0.0
+                    estimated_shares = int(allocated_money // last_price) if last_price > 0 else 0
                     
-                    st.session_state.trade_history.append({
-                        '시간': datetime.now().strftime('%H:%M:%S'),
-                        '종목': ticker,
-                        '구분': '매도',
-                        '수량': trade_qty,
-                        '체결가': f"{unit}{curr_price:,.2f}"
+                    allocation_data.append({
+                        "종목": t_name,
+                        "비중 (%)": f"{norm_weights[i]*100:.1f}%",
+                        "현재가 ($)": f"${last_price:,.2f}",
+                        "배정 금액 ($)": f"${allocated_money:,.2f}",
+                        "매수 가능 수량": f"{estimated_shares:,} 주"
                     })
-                    st.success(f"{ticker} {trade_qty}주 매도 완료!")
-                    st.rerun()
+                st.dataframe(pd.DataFrame(allocation_data), use_container_width=True)
 
-    with col_port:
-        st.write("##### 내 보유 포트폴리오")
-        if not st.session_state.portfolio:
-            st.info("현재 보유 중인 주식이 없습니다.")
-        else:
-            port_data = []
-            for t_code, info in st.session_state.portfolio.items():
-                p_unit = "₩" if t_code.endswith(".KS") else "$"
-                port_data.append({
-                    "종목": t_code,
-                    "보유수량": f"{info['qty']}주",
-                    "평균단가": f"{p_unit}{info['avg_price']:,.2f}",
-                    "평가금액": f"{p_unit}{info['qty'] * curr_price:,.2f}"
-                })
-            st.table(pd.DataFrame(port_data))
-            
-    if st.session_state.trade_history:
-        st.markdown("---")
-        st.write("##### 최근 거래 내역")
-        st.dataframe(pd.DataFrame(st.session_state.trade_history).iloc[::-1], use_container_width=True)
+                # 백테스트 차트
+                df_returns = df_multi.pct_change().dropna()
+                portfolio_return = (df_returns * norm_weights).sum(axis=1)
+                cum_return = (1 + portfolio_return).cumprod()
 
-# ----------------------------------------------------
-# TAB 2: 포트폴리오 분석기
-# ----------------------------------------------------
-with tab2:
-    st.markdown('<div class="guide-box"><b>포트폴리오 분석</b>: 선택한 종목들의 과거 백테스팅, 상관관계 히트맵 및 리밸런싱 계산을 지원합니다.</div>', unsafe_allow_html=True)
-    
-    selected_port_tickers = st.multiselect(
-        "분석할 포트폴리오 종목 선택", 
-        list(POPULAR_STOCKS.values()),
-        default=["AAPL", "NVDA", "SPY"]
-    )
-    
-    if len(selected_port_tickers) >= 2:
-        weights = {}
-        st.write("##### 종목별 투자 비중 설정 (%)")
-        cols = st.columns(len(selected_port_tickers))
-        
-        default_w = round(100.0 / len(selected_port_tickers), 2)
-        for idx, t in enumerate(selected_port_tickers):
-            with cols[idx]:
-                weights[t] = st.number_input(f"{t} 비중", min_value=0.0, max_value=100.0, value=default_w, step=1.0, format="%.2f")
-                
-        tot_weight = round(sum(weights.values()), 2)
-        if abs(tot_weight - 100.0) > 0.5:
-            st.warning(f"비중 합계가 {tot_weight}%입니다. (100%에 맞춰주세요)")
-        else:
-            st.success(f"비중 합계: {tot_weight}% (정상)")
-            
-            df_port = fetch_multi_ticker_data(selected_port_tickers, str(start_date), str(end_date))
-            if df_port is not None and not df_port.empty:
-                daily_returns = df_port.pct_change().dropna()
-                w_list = np.array([weights[t] for t in selected_port_tickers])
-                w_list = w_list / np.sum(w_list)
-                
-                port_returns = (daily_returns * w_list).sum(axis=1)
-                cum_returns = (1 + port_returns).cumprod()
-                
-                sub_t1, sub_t2, sub_t3 = st.tabs(["과거 성과 백테스트", "상관계수 히트맵", "리밸런싱 계산기"])
-                
-                with sub_t1:
-                    total_ret = (cum_returns.iloc[-1] - 1) * 100
-                    cagr = ((cum_returns.iloc[-1]) ** (365 / len(cum_returns)) - 1) * 100
-                    peak = cum_returns.cummax()
-                    mdd = ((cum_returns - peak) / peak).min() * 100
-                    
-                    b1, b2, b3 = st.columns(3)
-                    b1.metric("총 수익률", f"{total_ret:+.2f}%")
-                    b2.metric("연평균 수익률 (CAGR)", f"{cagr:.2f}%")
-                    b3.metric("최대 낙폭 (MDD)", f"{mdd:.2f}%")
-                    
-                    fig_bt = go.Figure()
-                    fig_bt.add_trace(go.Scatter(x=cum_returns.index, y=cum_returns.values, mode='lines', name='포트폴리오', line=dict(color='#38BDF8', width=2)))
-                    fig_bt.update_layout(template="plotly_dark", height=350, title="포트폴리오 누적 성과 추이", yaxis_title="자산 가치 (1.0 기준)")
-                    st.plotly_chart(fig_bt, use_container_width=True)
+                fig_pf = go.Figure()
+                fig_pf.add_trace(go.Scatter(x=cum_return.index, y=cum_return.values, mode='lines', name='포트폴리오 성과'))
+                fig_pf.update_layout(title="포트폴리오 백테스트 (1년 누적 성과)", xaxis_title="날짜", yaxis_title="배수 (1.0 = 원금)")
+                st.plotly_chart(fig_pf, use_container_width=True)
 
-                with sub_t2:
-                    corr_matrix = daily_returns.corr()
-                    fig_corr = px.imshow(corr_matrix, text_auto=".2f", color_continuous_scale="Blues")
-                    fig_corr.update_layout(template="plotly_dark", height=350)
-                    st.plotly_chart(fig_corr, use_container_width=True)
-
-                with sub_t3:
-                    total_inv = st.number_input("현재 포트폴리오 총 평가금액 (원)", value=10000000, step=1000000)
-                    rebal_data = []
-                    for idx, t in enumerate(selected_port_tickers):
-                        target_amt = total_inv * w_list[idx]
-                        last_p = df_port[t].iloc[-1]
-                        target_shares = target_amt / last_p
-                        rebal_data.append({
-                            "종목": t,
-                            "목표 비중": f"{weights[t]:.2f}%",
-                            "목표 금액": f"₩{target_amt:,.0f}",
-                            "현재가": f"{last_p:,.2f}",
-                            "필요 목표 주수": f"{target_shares:.2f} 주"
-                        })
-                    st.table(pd.DataFrame(rebal_data))
-
-# ----------------------------------------------------
-# TAB 3: 기술적 분석 차트
-# ----------------------------------------------------
-with tab3:
-    st.markdown('<div class="guide-box"><b>기술적 차트</b>: 이동평균선(20/60일), 볼린저밴드, RSI 및 <b>AI 매매 신호 마커</b>를 조회합니다.</div>', unsafe_allow_html=True)
-    
-    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03, row_heights=[0.7, 0.3])
-    
-    fig.add_trace(go.Candlestick(
-        x=df.index, open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'], name='주가'
-    ), row=1, col=1)
-    
-    fig.add_trace(go.Scatter(x=df.index, y=df['SMA20'], mode='lines', name='SMA 20', line=dict(color='#38BDF8', width=1)), row=1, col=1)
-    fig.add_trace(go.Scatter(x=df.index, y=df['SMA60'], mode='lines', name='SMA 60', line=dict(color='#F59E0B', width=1)), row=1, col=1)
-    fig.add_trace(go.Scatter(x=df.index, y=df['UpperBB'], mode='lines', name='Upper BB', line=dict(color='rgba(255,255,255,0.3)', dash='dash')), row=1, col=1)
-    fig.add_trace(go.Scatter(x=df.index, y=df['LowerBB'], mode='lines', name='Lower BB', line=dict(color='rgba(255,255,255,0.3)', dash='dash')), row=1, col=1)
-    
-    buy_signals = df[(df['SMA20'] > df['SMA60']) & (df['SMA20'].shift(1) <= df['SMA60'].shift(1))]
-    sell_signals = df[(df['SMA20'] < df['SMA60']) & (df['SMA20'].shift(1) >= df['SMA60'].shift(1))]
-    
-    fig.add_trace(go.Scatter(
-        x=buy_signals.index, y=buy_signals['Low'] * 0.97, mode='markers',
-        marker=dict(symbol='triangle-up', size=11, color='#10B981'), name='AI 매수 신호'
-    ), row=1, col=1)
-
-    fig.add_trace(go.Scatter(
-        x=sell_signals.index, y=sell_signals['High'] * 1.03, mode='markers',
-        marker=dict(symbol='triangle-down', size=11, color='#EF4444'), name='AI 매도 신호'
-    ), row=1, col=1)
-
-    fig.add_trace(go.Scatter(x=df.index, y=df['RSI'], mode='lines', name='RSI 14', line=dict(color='#EC4899', width=1.5)), row=2, col=1)
-    fig.add_hline(y=70, line_dash="dash", line_color="red", row=2, col=1)
-    fig.add_hline(y=30, line_dash="dash", line_color="green", row=2, col=1)
-    
-    fig.update_layout(template="plotly_dark", height=550, xaxis_rangeslider_visible=False)
-    st.plotly_chart(fig, use_container_width=True)
-
-# ----------------------------------------------------
-# TAB 4: AI 매매 신호
-# ----------------------------------------------------
-with tab4:
-    st.markdown('<div class="guide-box"><b>AI 매매 신호</b>: 이동평균선 및 RSI 기반 종합 매매 진단을 제공합니다.</div>', unsafe_allow_html=True)
-    
-    curr_rsi = df['RSI'].iloc[-1]
-    curr_sma20 = df['SMA20'].iloc[-1]
-    curr_sma60 = df['SMA60'].iloc[-1]
-    
-    signal_score = 0
-    reasons = []
-    
-    if curr_sma20 > curr_sma60:
-        signal_score += 1
-        reasons.append("20일 이동평균선이 60일 이동평균선 위에 위치 (상승 추세)")
+                st.subheader("상관관계 히트맵")
+                corr = df_returns.corr()
+                fig_corr = go.Figure(data=go.Heatmap(z=corr.values, x=corr.columns, y=corr.index, colorscale='Viridis'))
+                st.plotly_chart(fig_corr, use_container_width=True)
     else:
-        signal_score -= 1
-        reasons.append("20일 이동평균선이 60일 이동평균선 아래에 위치 (하락 추세)")
+        st.warning("포트폴리오 분석을 위해 최소 2개 이상의 종목을 입력해 주세요.")
+
+# ------------------------------------------
+# TAB 3: Technical Chart
+# ------------------------------------------
+with t3:
+    st.subheader(f"{symbol} 기술적 분석 차트")
+    if df_stock is not None and not df_stock.empty:
+        df_tc = df_stock.copy()
+        df_tc['MA20'] = df_tc['Close'].rolling(window=20).mean()
+        df_tc['MA60'] = df_tc['Close'].rolling(window=60).mean()
+        df_tc['STD20'] = df_tc['Close'].rolling(window=20).std()
+        df_tc['Upper'] = df_tc['MA20'] + (df_tc['STD20'] * 2)
+        df_tc['Lower'] = df_tc['MA20'] - (df_tc['STD20'] * 2)
+
+        fig_tech = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03, row_heights=[0.7, 0.3])
+        fig_tech.add_trace(go.Candlestick(x=df_tc.index, open=df_tc['Open'], high=df_tc['High'], low=df_tc['Low'], close=df_tc['Close'], name='주가'), row=1, col=1)
+        fig_tech.add_trace(go.Scatter(x=df_tc.index, y=df_tc['MA20'], mode='lines', name='MA 20', line=dict(color='orange')), row=1, col=1)
+        fig_tech.add_trace(go.Scatter(x=df_tc.index, y=df_tc['MA60'], mode='lines', name='MA 60', line=dict(color='blue')), row=1, col=1)
+        fig_tech.add_trace(go.Scatter(x=df_tc.index, y=df_tc['Upper'], mode='lines', name='볼린저 상한', line=dict(color='gray', dash='dash')), row=1, col=1)
+        fig_tech.add_trace(go.Scatter(x=df_tc.index, y=df_tc['Lower'], mode='lines', name='볼린저 하한', line=dict(color='gray', dash='dash')), row=1, col=1)
+
+        fig_tech.add_trace(go.Bar(x=df_tc.index, y=df_tc['Volume'], name='거래량', marker_color='teal'), row=2, col=1)
+        fig_tech.update_layout(xaxis_rangeslider_visible=False, height=600)
+        st.plotly_chart(fig_tech, use_container_width=True)
+
+# ------------------------------------------
+# TAB 4: AI Signal Markers
+# ------------------------------------------
+with t4:
+    st.subheader("🤖 AI 이동평균 골든/데드크로스 매매 시그널")
+    
+    # 법적 면책 문구 고정 표시
+    st.markdown("""
+    <div class="disclaimer-box">
+        ⚠️ <b>법적 안내 및 면책 공지</b><br>
+        본 AI 매매 시그널은 가상 알고리즘 및 기술적 분석 지표에 기초한 모의투자 참고용 데이터이며, 특정 종목에 대한 투자 권유나 수익을 보장하지 않습니다. 모든 투자 판단에 대한 책임은 본인에게 있습니다.
+    </div>
+    """, unsafe_allow_html=True)
+
+    if df_stock is not None and not df_stock.empty:
+        df_ai = df_stock.copy()
+        df_ai['MA20'] = df_ai['Close'].rolling(window=20).mean()
+        df_ai['MA60'] = df_ai['Close'].rolling(window=60).mean()
         
-    if curr_rsi < 30:
-        signal_score += 2
-        reasons.append("RSI 30 이하로 과매도 구간 (반등 가능성 높음)")
-    elif curr_rsi > 70:
-        signal_score -= 2
-        reasons.append("RSI 70 이상으로 과매수 구간 (단기 조정 가능성 높음)")
+        buy_signals = (df_ai['MA20'] > df_ai['MA60']) & (df_ai['MA20'].shift(1) <= df_ai['MA60'].shift(1))
+        sell_signals = (df_ai['MA20'] < df_ai['MA60']) & (df_ai['MA20'].shift(1) >= df_ai['MA60'].shift(1))
+
+        fig_ai = go.Figure()
+        fig_ai.add_trace(go.Scatter(x=df_ai.index, y=df_ai['Close'], mode='lines', name='종가', line=dict(color='gray')))
+        fig_ai.add_trace(go.Scatter(x=df_ai.index, y=df_ai['MA20'], mode='lines', name='MA20', line=dict(color='orange')))
+        fig_ai.add_trace(go.Scatter(x=df_ai.index, y=df_ai['MA60'], mode='lines', name='MA60', line=dict(color='blue')))
+
+        fig_ai.add_trace(go.Scatter(
+            x=df_ai[buy_signals].index, y=df_ai[buy_signals]['Close'],
+            mode='markers', name='▲ AI 매수 시그널',
+            marker=dict(symbol='triangle-up', size=12, color='green')
+        ))
+        fig_ai.add_trace(go.Scatter(
+            x=df_ai[sell_signals].index, y=df_ai[sell_signals]['Close'],
+            mode='markers', name='▼ AI 매도 시그널',
+            marker=dict(symbol='triangle-down', size=12, color='red')
+        ))
+        fig_ai.update_layout(height=500, title=f"{symbol} 최근 1년 AI 매매 시그널")
+        st.plotly_chart(fig_ai, use_container_width=True)
+
+# ------------------------------------------
+# TAB 5: Quant Risk Analysis
+# ------------------------------------------
+with t5:
+    st.subheader("퀀트 리스크 & 지표 분석")
+    if df_stock is not None and not df_stock.empty:
+        df_q = df_stock.copy()
+        df_q['Return'] = df_q['Close'].pct_change()
+        
+        cum_ret = (1 + df_q['Return']).cumprod()
+        peak = cum_ret.cummax()
+        dd = (cum_ret - peak) / peak
+        mdd = dd.min() * 100
+
+        vol = df_q['Return'].std() * np.sqrt(252) * 100
+        sharpe = (df_q['Return'].mean() * 252) / (df_q['Return'].std() * np.sqrt(252)) if df_q['Return'].std() != 0 else 0
+
+        q1, q2, q3 = st.columns(3)
+        q1.metric("최대 낙폭 (MDD)", f"{mdd:.2f}%")
+        q2.metric("연환산 변동성", f"{vol:.2f}%")
+        q3.metric("샤프 지수 (Sharpe Ratio)", f"{sharpe:.2f}")
+
+        fig_dd = go.Figure()
+        fig_dd.add_trace(go.Scatter(x=dd.index, y=dd * 100, mode='lines', name='Drawdown (%)', fill='tozeroy', line=dict(color='red')))
+        fig_dd.update_layout(title="Drawdown (낙폭) 차트", yaxis_title="낙폭 (%)", height=350)
+        st.plotly_chart(fig_dd, use_container_width=True)
+
+# ------------------------------------------
+# TAB 6: Monte Carlo (Pro)
+# ------------------------------------------
+with t6:
+    st.subheader("🔮 몬테카를로 시뮬레이션 (Pro 전용)")
+    if st.session_state.user_tier != "Pro":
+        st.warning("⚠️ 몬테카를로 시뮬레이션 기능은 **Pro 요금제** 전용 기능입니다.")
+        st.info("왼쪽 사이드바의 '서비스 모드 전환'에서 **Pro** 선택 시 즉시 사용해 보실 수 있습니다.")
     else:
-        reasons.append("RSI 중립 구간 (30 ~ 70)")
-        
-    col1, col2 = st.columns([1, 2])
-    with col1:
-        if signal_score >= 2: st.success("### AI 진단: **강력 매수 (Strong Buy)**")
-        elif signal_score == 1: st.info("### AI 진단: **매수 (Buy)**")
-        elif signal_score == 0: st.warning("### AI 진단: **관망 (Hold)**")
-        else: st.error("### AI 진단: **매도/위험 (Sell)**")
-            
-    with col2:
-        st.write("##### 판단 근거")
-        for r in reasons: st.write(f"• {r}")
+        if df_stock is not None and not df_stock.empty:
+            st.success("Pro 회원 인증 완료: 몬테카를로 10,000회 시뮬레이션을 실행합니다.")
+            returns = df_stock['Close'].pct_change().dropna()
+            mu = returns.mean()
+            sigma = returns.std()
+            last_price = float(df_stock['Close'].iloc[-1])
 
-# ----------------------------------------------------
-# TAB 5: 퀀트 리스크 분석
-# ----------------------------------------------------
-with tab5:
-    st.markdown('<div class="guide-box"><b>위험도 분석</b>: 낙폭(MDD), Sharpe Ratio 및 일일 변동성 평가를 제공합니다.</div>', unsafe_allow_html=True)
-    
-    daily_ret = df['Close'].pct_change().dropna()
-    annual_vol = daily_ret.std() * np.sqrt(252) * 100
-    annual_return = daily_ret.mean() * 252 * 100
-    sharpe_ratio = (annual_return - 3.5) / annual_vol if annual_vol != 0 else 0
-    
-    cum_ret = (1 + daily_ret).cumprod()
-    peak = cum_ret.cummax()
-    mdd = ((cum_ret - peak) / peak).min() * 100
+            days = 252
+            sims = 200
+            simulation_df = pd.DataFrame()
 
-    col_v1, col_v2, col_v3 = st.columns(3)
-    col_v1.metric("최대 낙폭 (MDD)", f"{mdd:.2f}%")
-    col_v2.metric("연환산 변동성", f"{annual_vol:.2f}%")
-    col_v3.metric("샤프 지수 (Sharpe)", f"{sharpe_ratio:.2f}")
-    
-    fig_dd = go.Figure()
-    fig_dd.add_trace(go.Scatter(x=df.index[1:], y=(cum_ret - peak)/peak * 100, fill='tozeroy', mode='lines', line=dict(color='#EF4444')))
-    fig_dd.update_layout(template="plotly_dark", height=300, yaxis_title="낙폭 비율 (%)")
-    st.plotly_chart(fig_dd, use_container_width=True)
+            for i in range(sims):
+                prices = [last_price]
+                for d in range(days):
+                    price = prices[-1] * np.exp((mu - 0.5 * sigma**2) + sigma * np.random.normal())
+                    prices.append(price)
+                simulation_df[i] = prices
 
-# ----------------------------------------------------
-# TAB 6: 몬테카를로 AI 예측 (Pro 전용 잠금)
-# ----------------------------------------------------
-with tab6:
-    st.markdown('<div class="guide-box"><b>몬테카를로 확률 예측</b>: Pro 멤버십 전용 미래 주가 확률 시뮬레이션입니다.</div>', unsafe_allow_html=True)
-    
-    current_plan = st.session_state.user_plan
-    
-    if current_plan != "Pro":
-        st.warning("🔒 **몬테카를로 AI 예측 기능은 Pro 멤버십 전용 기능입니다.**")
-        st.markdown("""
-        <div style="background-color: #1E293B; border: 1px solid #334155; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-            <b style="color: #38BDF8;">Pro 멤버십 혜택</b><br>
-            • 복수 종목 분할 투자 포트폴리오 시뮬레이션<br>
-            • 최대 10,000회 몬테카를로 난수 시뮬레이션 지원<br>
-            • 상위/하위 10% 위험 자산 및 예상 수익률 분석
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("Pro 멤버십으로 업그레이드하기", type="primary"):
-            st.toast("결제 페이지로 이동합니다.")
-    else:
-        st.success("Pro 멤버십 혜택: 몬테카를로 확률 예측 시뮬레이션이 활성화되었습니다.")
-        
-        selected_mc_tickers = st.multiselect(
-            "시뮬레이션할 포트폴리오 종목 구성", 
-            list(POPULAR_STOCKS.values()),
-            default=["AAPL", "NVDA"]
-        )
-        
-        if len(selected_mc_tickers) > 1:
-            mc_weights = {}
-            cols = st.columns(len(selected_mc_tickers))
-            def_w = round(100.0 / len(selected_mc_tickers), 2)
-            for idx, t in enumerate(selected_mc_tickers):
-                with cols[idx]:
-                    mc_weights[t] = st.number_input(f"{t} 비중(%)", min_value=0.0, max_value=100.0, value=def_w, step=1.0, format="%.2f", key=f"mc_w_{t}")
-        else:
-            mc_weights = {selected_mc_tickers[0]: 100.0} if selected_mc_tickers else {}
-
-        st.markdown("---")
-        
-        if selected_mc_tickers:
-            col_m1, col_m2, col_m3 = st.columns([1.5, 1.5, 1])
-            with col_m1: init_budget = st.number_input("투자 예산 (원금)", min_value=100000, value=10000000, step=1000000)
-            with col_m2: pred_days = st.slider("예측 기간 (일수)", min_value=30, max_value=252, value=90, step=30)
-            with col_m3:
-                num_sims = 10000
-                st.caption(f"시뮬레이션 횟수: **{num_sims:,}회 (Pro)**")
-                
-            df_mc = fetch_multi_ticker_data(selected_mc_tickers, str(start_date), str(end_date))
-            
-            if df_mc is not None and not df_mc.empty:
-                daily_returns = df_mc.pct_change().dropna()
-                
-                if len(selected_mc_tickers) == 1:
-                    port_daily_ret = daily_returns.iloc[:, 0]
-                else:
-                    w_arr = np.array([mc_weights[t] for t in selected_mc_tickers])
-                    w_arr = w_arr / np.sum(w_arr)
-                    port_daily_ret = (daily_returns * w_arr).sum(axis=1)
-                    
-                u = port_daily_ret.mean()
-                var = port_daily_ret.var()
-                drift = u - (0.5 * var)
-                stdev = port_daily_ret.std()
-                
-                np.random.seed(42)
-                sim_daily_returns = np.exp(drift + stdev * np.random.normal(0, 1, (pred_days, num_sims)))
-                
-                asset_paths = np.zeros_like(sim_daily_returns)
-                asset_paths[0] = init_budget
-                for t in range(1, pred_days):
-                    asset_paths[t] = asset_paths[t - 1] * sim_daily_returns[t]
-                    
-                final_assets = asset_paths[-1]
-                a_10 = np.percentile(final_assets, 10)
-                a_50 = np.median(final_assets)
-                a_90 = np.percentile(final_assets, 90)
-                profit_prob = (final_assets > init_budget).sum() / num_sims * 100
-
-                st.write(f"##### {init_budget:,.0f}원 투자 시 {pred_days}일 후 예상 자산 평가")
-                r1, r2, r3, r4 = st.columns(4)
-                r1.metric("예상 자산 (중앙값)", f"₩{a_50:,.0f}", f"{((a_50 - init_budget)/init_budget)*100:+.1f}%")
-                r2.metric("상위 10% (Best)", f"₩{a_90:,.0f}", f"{((a_90 - init_budget)/init_budget)*100:+.1f}%")
-                r3.metric("하위 10% (Worst)", f"₩{a_10:,.0f}", f"{((a_10 - init_budget)/init_budget)*100:+.1f}%")
-                r4.metric("원금 보존/수익 확률", f"{profit_prob:.1f}%")
-
-                fig_mc = go.Figure()
-                sample_paths = asset_paths[:, :100]
-                for i in range(sample_paths.shape[1]):
-                    fig_mc.add_trace(go.Scatter(y=sample_paths[:, i], mode='lines', line=dict(width=0.5, color='rgba(56, 189, 248, 0.1)'), showlegend=False))
-                fig_mc.add_trace(go.Scatter(y=np.percentile(asset_paths, 90, axis=1), name="상위 10%", line=dict(color='#10B981', width=2)))
-                fig_mc.add_trace(go.Scatter(y=np.median(asset_paths, axis=1), name="중앙값 (50%)", line=dict(color='#F59E0B', width=2.5)))
-                fig_mc.add_trace(go.Scatter(y=np.percentile(asset_paths, 10, axis=1), name="하위 10%", line=dict(color='#EF4444', width=2)))
-                fig_mc.update_layout(template="plotly_dark", height=380, xaxis=dict(title="경과 일수 (Day)"), yaxis=dict(title="예상 평가액 (₩)"))
-                
-                st.plotly_chart(fig_mc, use_container_width=True)
+            fig_mc = go.Figure()
+            for col in simulation_df.columns[:50]:
+                fig_mc.add_trace(go.Scatter(y=simulation_df[col], mode='lines', line=dict(width=1), showlegend=False))
+            fig_mc.update_layout(title=f"{symbol} 향후 1년 주가 예측 (200개 시나리오)", xaxis_title="경과 일수", yaxis_title="예측 주가 ($)")
+            st.plotly_chart(fig_mc, use_container_width=True)
