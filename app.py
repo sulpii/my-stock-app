@@ -17,18 +17,21 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Supabase DB Settings
-SUPABASE_URL = "https://aenomakwawdfikftscer.supabase.co"
-# TODO: 본인의 Supabase Publishable (anon public) Key를 아래에 입력해 주세요.
-SUPABASE_KEY = "여기에_Publishable_키를_입력하세요" 
+# Supabase DB Settings (Streamlit Secrets 우선 참조, 미설정 시 기본값/안내)
+try:
+    SUPABASE_URL = st.secrets.get("SUPABASE_URL", "https://aenomakwawdfikftscer.supabase.co")
+    SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", "")
+except Exception:
+    SUPABASE_URL = "https://aenomakwawdfikftscer.supabase.co"
+    SUPABASE_KEY = ""
 
 @st.cache_resource
 def init_supabase():
     try:
-        if SUPABASE_KEY and SUPABASE_KEY != "여기에_Publishable_키를_입력하세요":
+        if SUPABASE_KEY and SUPABASE_KEY.strip() and SUPABASE_KEY != "여기에_Publishable_키를_입력하세요":
             return create_client(SUPABASE_URL, SUPABASE_KEY)
         return None
-    except Exception as e:
+    except Exception:
         return None
 
 supabase: Client = init_supabase()
@@ -103,6 +106,8 @@ if "portfolio" not in st.session_state:
     st.session_state.portfolio = {}
 if "trade_history" not in st.session_state:
     st.session_state.trade_history = []
+if "order_qty_input" not in st.session_state:
+    st.session_state.order_qty_input = 1
 
 # Helper: Sync to Supabase
 def save_user_data_to_db():
@@ -116,7 +121,7 @@ def save_user_data_to_db():
                 "trade_history": st.session_state.trade_history
             }
             supabase.table("user_data").upsert(data).execute()
-        except Exception as e:
+        except Exception:
             pass
 
 def load_user_data_from_db(user_id):
@@ -129,8 +134,16 @@ def load_user_data_from_db(user_id):
                 st.session_state.cash_balance = float(row.get("cash_balance", 100000.0))
                 st.session_state.portfolio = row.get("portfolio", {})
                 st.session_state.trade_history = row.get("trade_history", [])
-        except Exception as e:
+        except Exception:
             pass
+
+# Callback helpers for order quantity buttons
+def set_order_qty(val: int):
+    st.session_state.order_qty_input = max(1, int(val))
+
+def set_max_order_qty(balance: float, price: float):
+    if price > 0:
+        st.session_state.order_qty_input = max(1, int(balance // price))
 
 # ==========================================
 # 1. SIDEBAR & AUTHENTICATION
@@ -141,7 +154,7 @@ with st.sidebar:
     tier_badge = f'<span class="badge-{st.session_state.user_tier.lower()}">{st.session_state.user_tier}</span>'
     st.markdown(f"**현재 계정:** {st.session_state.user_email} {tier_badge}", unsafe_allow_html=True)
     
-    # 간편 서비스 모드/플랜 전환 (팝업 없이 즉시 변경)
+    # 간편 서비스 모드/플랜 전환 (프로토타입 테스트용)
     selected_tier = st.selectbox(
         "⚡ 서비스 모드 전환", 
         ["Free", "Lite", "Pro"], 
@@ -155,6 +168,9 @@ with st.sidebar:
     st.divider()
     
     st.subheader("🔐 계정 관리")
+    if not supabase:
+        st.caption("⚠️ Supabase 미연결 상태입니다. (로컬 메모리 모드로 동작 중)")
+    
     auth_mode = st.radio("인증 선택", ["로그인", "회원가입"], key="auth_mode_radio")
     
     email_input = st.text_input("이메일 주소", key="auth_email")
@@ -165,7 +181,7 @@ with st.sidebar:
             if not email_input or not password_input:
                 st.error("이메일과 비밀번호를 모두 입력해 주세요.")
             elif not supabase:
-                st.error("Supabase API 키 설정이 올바르지 않습니다.")
+                st.error("Supabase API 키 설정이 올바르지 않습니다. Secrets를 확인해 주세요.")
             else:
                 try:
                     res = supabase.auth.sign_up({"email": email_input, "password": password_input})
@@ -186,7 +202,7 @@ with st.sidebar:
             if not email_input or not password_input:
                 st.error("이메일과 비밀번호를 입력해 주세요.")
             elif not supabase:
-                st.error("Supabase API 키 설정이 올바르지 않습니다.")
+                st.error("Supabase API 키 설정이 올바르지 않습니다. Secrets를 확인해 주세요.")
             else:
                 try:
                     res = supabase.auth.sign_in_with_password({"email": email_input, "password": password_input})
@@ -207,7 +223,7 @@ with st.sidebar:
             if supabase:
                 try:
                     supabase.auth.sign_out()
-                except:
+                except Exception:
                     pass
             st.session_state.authenticated = False
             st.session_state.user_email = "Guest"
@@ -235,7 +251,6 @@ with st.sidebar:
     selected_name = st.selectbox("인기 종목 바로선택", list(popular_tickers.keys()))
     symbol = st.text_input("티커 직접 입력", popular_tickers[selected_name]).upper().strip()
     
-    # 시작일 선택 제거 ➔ 최근 1년 자동 세팅
     end_date = datetime.date.today()
     start_date = end_date - datetime.timedelta(days=365)
     st.caption("ℹ️ 최근 1년 데이터로 자동 분석됩니다.")
@@ -250,7 +265,7 @@ def load_stock_data(ticker, start, end):
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
         return df
-    except Exception as e:
+    except Exception:
         return None
 
 df_stock = load_stock_data(symbol, start_date, end_date)
@@ -284,6 +299,7 @@ if df_stock is not None and not df_stock.empty:
     m3.metric("총 평가 자산 (Total)", f"${total_asset:,.2f}")
     m4.metric("누적 수익률 (P&L)", f"${profit_loss:+,.2f}", f"{profit_loss_pct:+.2f}%")
 else:
+    current_price = 0.0
     st.warning(f"'{symbol}' 종목 데이터를 불러올 수 없습니다. 티커를 확인해 주세요.")
 
 st.divider()
@@ -309,14 +325,14 @@ with t1:
         c1, c2 = st.columns([1, 1])
         with c1:
             st.markdown(f"**현재가:** `${current_price:,.2f}`")
-            order_qty = st.number_input("수량 (주)", min_value=1, value=1, step=1, key="order_qty_input")
             
             b1, b2, b3, b4 = st.columns(4)
-            if b1.button("+10주"): order_qty = 10
-            if b2.button("+50주"): order_qty = 50
-            if b3.button("+100주"): order_qty = 100
-            if b4.button("전액매수"): 
-                order_qty = max(1, int(st.session_state.cash_balance // current_price))
+            b1.button("+10주", on_click=set_order_qty, args=(10,), use_container_width=True)
+            b2.button("+50주", on_click=set_order_qty, args=(50,), use_container_width=True)
+            b3.button("+100주", on_click=set_order_qty, args=(100,), use_container_width=True)
+            b4.button("전액매수", on_click=set_max_order_qty, args=(st.session_state.cash_balance, current_price), use_container_width=True)
+
+            order_qty = st.number_input("주문 수량 (주)", min_value=1, step=1, key="order_qty_input")
 
             total_cost = order_qty * current_price
             st.caption(f"예상 거래 금액: `${total_cost:,.2f}`")
@@ -386,7 +402,6 @@ with t2:
     symbols_input = st.text_input("분석할 티커 목록 (쉼표 구분)", "AAPL, MSFT, NVDA, TSLA")
     tickers_list = [t.strip().upper() for t in symbols_input.split(",") if t.strip()]
 
-    # 총 투자 예산 (시드머니) 입력 추가
     total_budget = st.number_input("총 투자 예산 ($)", min_value=100.0, value=10000.0, step=500.0)
 
     if len(tickers_list) >= 2:
@@ -405,13 +420,22 @@ with t2:
             norm_weights = [w / sum_w for w in raw_weights]
             
             # 종목별 구매 금액 및 수량 자동 계산
-            df_multi = yf.download(tickers_list, start=start_date, end=end_date)['Close']
-            if isinstance(df_multi, pd.DataFrame) and not df_multi.empty:
+            raw_multi = yf.download(tickers_list, start=start_date, end=end_date)
+            if isinstance(raw_multi, pd.DataFrame) and not raw_multi.empty:
+                if 'Close' in raw_multi.columns:
+                    df_multi = raw_multi['Close']
+                else:
+                    df_multi = raw_multi
+                
+                # MultiIndex 정리
+                if isinstance(df_multi.columns, pd.MultiIndex):
+                    df_multi.columns = df_multi.columns.get_level_values(0)
+
                 st.markdown("### 💵 종목별 추천 매수 금액 및 주식 수")
                 allocation_data = []
                 for i, t_name in enumerate(tickers_list):
                     allocated_money = total_budget * norm_weights[i]
-                    last_price = float(df_multi[t_name].iloc[-1]) if t_name in df_multi.columns else 0.0
+                    last_price = float(df_multi[t_name].dropna().iloc[-1]) if t_name in df_multi.columns and not df_multi[t_name].dropna().empty else 0.0
                     estimated_shares = int(allocated_money // last_price) if last_price > 0 else 0
                     
                     allocation_data.append({
@@ -470,7 +494,6 @@ with t3:
 with t4:
     st.subheader("🤖 AI 이동평균 골든/데드크로스 매매 시그널")
     
-    # 법적 면책 문구 고정 표시
     st.markdown("""
     <div class="disclaimer-box">
         ⚠️ <b>법적 안내 및 면책 공지</b><br>
@@ -541,7 +564,7 @@ with t6:
         st.info("왼쪽 사이드바의 '서비스 모드 전환'에서 **Pro** 선택 시 즉시 사용해 보실 수 있습니다.")
     else:
         if df_stock is not None and not df_stock.empty:
-            st.success("Pro 회원 인증 완료: 몬테카를로 10,000회 시뮬레이션을 실행합니다.")
+            st.success("Pro 회원 인증 완료: 몬테카를로 200회 시뮬레이션을 실행합니다.")
             returns = df_stock['Close'].pct_change().dropna()
             mu = returns.mean()
             sigma = returns.std()
@@ -549,17 +572,17 @@ with t6:
 
             days = 252
             sims = 200
-            simulation_df = pd.DataFrame()
-
-            for i in range(sims):
-                prices = [last_price]
-                for d in range(days):
-                    price = prices[-1] * np.exp((mu - 0.5 * sigma**2) + sigma * np.random.normal())
-                    prices.append(price)
-                simulation_df[i] = prices
+            
+            # Vectorized Monte Carlo generation for optimal performance
+            daily_returns = np.exp((mu - 0.5 * sigma**2) + sigma * np.random.normal(size=(days, sims)))
+            price_paths = np.zeros((days + 1, sims))
+            price_paths[0] = last_price
+            for d in range(days):
+                price_paths[d + 1] = price_paths[d] * daily_returns[d]
 
             fig_mc = go.Figure()
-            for col in simulation_df.columns[:50]:
-                fig_mc.add_trace(go.Scatter(y=simulation_df[col], mode='lines', line=dict(width=1), showlegend=False))
+            # Plot up to 50 paths to maintain fluid rendering
+            for col in range(min(50, sims)):
+                fig_mc.add_trace(go.Scatter(y=price_paths[:, col], mode='lines', line=dict(width=1), showlegend=False))
             fig_mc.update_layout(title=f"{symbol} 향후 1년 주가 예측 (200개 시나리오)", xaxis_title="경과 일수", yaxis_title="예측 주가 ($)")
             st.plotly_chart(fig_mc, use_container_width=True)
